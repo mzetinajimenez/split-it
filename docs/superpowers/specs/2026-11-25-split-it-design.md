@@ -1,7 +1,7 @@
 # split-it — v1 Design Spec
 
 **Date:** 2026-11-25
-**Status:** Draft, pending user review (open decisions in §12)
+**Status:** Approved; decisions confirmed in §12
 **Repo:** `mzetinajimenez/split-it`
 **Sibling / reference architecture:** `mzetinajimenez/savor`
 
@@ -44,8 +44,9 @@ layers and Vercel deploy, and changes only the domain.
 
 ### Stretch (planned as issues, not v1-blocking)
 
-- **Receipt photo → draft items** through a key-gated server route calling Claude vision
-  (§9.3). It feeds the same review UI as paste.
+- **Tip and fee split methods:** a dropdown with post-tax %, fixed amount and split
+  equally. The engine supports all of them from day one (§5.4–5.5); the v1 UI exposes only
+  pre-tax % in proportion to what each person ordered.
 - **Payment deep links** (Venmo / Cash App / PayPal.me) on the summary.
 
 ### Explicitly deferred (designed for, not built)
@@ -59,6 +60,7 @@ layers and Vercel deploy, and changes only the domain.
 | Currency conversion | One currency per bill |
 | Decimal-comma receipts (`12,50`) | The parser takes an options object; a locale switch is additive |
 | Multi-line receipt items (price on the next line) | The parser reports `ignored` lines; a later heuristic is additive |
+| Receipt photo → draft items (not in the MVP) | `ParsedReceipt` + `DraftReview` are the seam. **Free, on-device OCR first**; paid only if free can't meet the quality bar (§9.3) |
 
 ## 3. Architecture
 
@@ -499,8 +501,12 @@ states, `md:hover:` only, safe-area insets, `h-dvh` sheets, inputs ≥16px
 
 ### `/` Bills
 
-- Each row shows the title, date, an avatar stack, the grand total and a status tag
-  (`3 unclaimed` / `2 of 4 paid` / `settled`).
+- **Concise history, no fluff.** One dense line per bill: the title, a short date
+  ("Tonight", "Nov 12") and the grand total, plus a small status dot (attention =
+  unclaimed, accent = settled). No avatars, cards, thumbnails or previews.
+  - Rows are grouped under month headers.
+  - Nothing extra is stored for history: each row is derived from the bill document, which
+    is already compact (about 1–3 KB).
 - Tapping a row opens the bill.
 - **New bill** runs `createBill()` and then `router.push(/bills/[id]/receipt)`.
 - The empty state invites "Split your first bill". Delete uses `ConfirmBox` (a tombstone).
@@ -556,10 +562,16 @@ states, `md:hover:` only, safe-area insets, `h-dvh` sheets, inputs ≥16px
 
 ### Tip
 
-- `TipPicker` offers chips for 0, 15, 18, 20, 22% and Custom (a % or an amount), a
-  **pre-tax / post-tax** toggle, a **proportional / equal** toggle, and the live tip amount.
-- `AdjustmentList` and `AdjustmentSheet` add, edit and remove fees and discounts: a label,
-  an amount or %, and the split mode.
+- **v1:** `TipPicker` offers chips for 0, 15, 18, **20 (default)** and 22%, plus a custom
+  %.
+  - The tip is always on the **pre-tax** subtotal and split **in proportion** to what each
+    person ordered.
+  - It shows the live tip amount.
+- `AdjustmentList` and `AdjustmentSheet` add, edit and remove fees and discounts: a label
+  and an amount or %, always split in proportion in v1.
+- **Follow-up:** a "Split method" dropdown for the tip and each fee or discount: pre-tax %,
+  post-tax %, fixed amount, split equally. It's UI only, because the engine already
+  implements every mode.
 
 ### Summary
 
@@ -635,9 +647,23 @@ When everyone should claim from their own phone at once:
   become per-row upserts (last-writer-wins on `updatedAt`), and hooks keep reading Dexie,
   which a background subscription fills.
 
-### 9.3 Stretch: receipt photo scanning
+### 9.3 Future: receipt photo scanning (not in the MVP)
 
-- **Recommended: Claude vision through `app/api/receipt-scan/route.ts`.**
+**Order of preference: free and highest-quality first. Paid is considered only if no free
+option meets the quality bar** (≥ 90% of line items right, nothing invented, on a
+corpus of real receipt photos).
+
+- **Free candidates, all on-device, with no server or key:**
+  - **Tesseract.js**: mature. About 3 MB of wasm plus language data. Its text is fed to
+    `parseReceipt`. It is weak on crumpled, thermal or low-light receipts.
+  - **Transformers.js document models**: for example a receipt-finetuned Donut (trained on
+    CORD), if an ONNX build is available, or TrOCR / Florence-2. These are tens to hundreds
+    of MB, lazy-loaded and cached. They can return structured line items directly.
+  - **PaddleOCR through onnxruntime-web**: strong text detection and recognition. Its text is
+    fed to `parseReceipt`.
+  - **The browser's built-in `TextDetector` (Shape Detection API)**: zero download, but
+    limited and inconsistent browser support, so use it opportunistically.
+- **Paid fallback, only if the free options fail the bar: Claude vision through `app/api/receipt-scan/route.ts`.**
   - The client downscales the image (longest edge ≤ 1600px, JPEG) and POSTs it.
   - The route calls the Anthropic TypeScript SDK `client.messages.parse()` with a base64
     `image` block and `output_config.format` (`zodOutputFormat` of a schema matching
@@ -650,9 +676,9 @@ When everyone should claim from their own phone at once:
   production, because a public route spends real money: a Vercel WAF rate-limit rule, a
   size cap, and optionally a shared passphrase.
 - **Privacy note in the UI:** the photo is sent to Anthropic for parsing.
-- **The alternative is Tesseract.js** (in the browser, no key or server). It costs about 3
-  MB of wasm plus language data and reads receipts much less accurately. Its text would be
-  fed to `parseReceipt`.
+
+Whichever wins, the output goes through `DraftReview` and is never committed
+automatically.
 
 ## 10. Testing
 
@@ -709,16 +735,17 @@ split-it adds:
 - **The long-press split peek is an accelerator.** The chevron to `ItemSplitSheet` is the
   canonical, accessible path.
 
-## 12. Open decisions (defaults chosen so work can start)
+## 12. Decisions (confirmed 2026-11-25)
 
-1. **Visual identity.** Default: a new "Thermal" receipt-paper theme with the semantic token
-   names above. Alternative: reuse savor's Supper Club palette.
-2. **Persistence.** Default: a Dexie bill history (savor's seam). Alternative: one bill at a
-   time in `localStorage` (simpler, but no history).
-3. **Photo scanning.** Default: a stretch issue using Claude vision with a key (§9.3).
-   Alternatives: Tesseract.js, or drop it.
-4. **Tip default.** Default: 20% pre-tax, proportional, editable in Settings and applied
-   when a bill is created.
-5. **Live multi-device claiming.** Default: phase 2 on Supabase, after v1 ships. v1 is pass
-   the phone, plus a read-only share link.
-6. **App name.** Working name: **split-it**.
+1. **Visual identity:** split-it gets **its own style**, a new identity built on the
+   semantic token names above. The "Thermal" receipt-paper direction is the starting
+   proposal for #4.
+2. **Persistence:** a **Dexie bill history**, kept **concise**: one dense line per bill, no
+   fluff, and nothing stored beyond the bill document itself.
+3. **Photo scanning:** **out of the MVP.** When it is picked up, **free on-device options
+   come first**, and paid ones only if free can't meet the quality bar (§9.3).
+4. **Tip default:** **20% of the pre-tax subtotal, split in proportion** to each person's
+   spend. A follow-up adds a split-method dropdown: post-tax, fixed amount, equal.
+5. **Live multi-device claiming:** **phase 2** on Supabase. v1 is pass the phone, plus a
+   read-only share link.
+6. **App name:** working name **split-it**.

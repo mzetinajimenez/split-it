@@ -44,8 +44,9 @@ the same wave touch disjoint files; the shared touch points are pre-agreed below
 | 6 | #25 shared view `/s` | needs #23's prop-driven components |
 | 7 | #27 e2e journeys | fixtures can start once #19 lands |
 | 8 | #28 PWA polish + launch | real-device checklist *(owner)* |
-| Stretch | #29 photo scan (after #17, #7) · #30 pay links (after #23) | need decisions or keys |
-| Future | #31 Supabase live-claiming RFC | after v1 |
+| Follow-up | #33 split-method dropdown: post-tax, fixed amount, equal (after #22) | the engine already supports every method |
+| Stretch | #30 pay links (after #23) | |
+| Future | #29 photo scan (**not in the MVP**; free on-device OCR first) · #31 Supabase live-claiming RFC | after v1 |
 
 **Critical path:** #2 → #3 → #10 → #12 → (#19 / #23 …) → #25 → #27 → #28.
 
@@ -118,8 +119,8 @@ graph LR
   I27 --> I28["28 · PWA + launch"]
   I7 --> I28
 
-  I17 --> I29["29 · Photo scan (stretch)"]
-  I7 --> I29
+  I17 --> I29["29 · Photo scan (future, free OCR first)"]
+  I22 --> I33["33 · Split-method dropdown (follow-up)"]
   I23 --> I30["30 · Pay links (stretch)"]
   I28 --> I31["31 · Supabase RFC (future)"]
 ```
@@ -141,11 +142,10 @@ These are the only places two issues edit the same file. Each is a one-line, mer
 
 ## Owner actions (only the repo owner can do these)
 
-1. Review the spec, and decide the open questions in spec §12 (theme, photo scanning, tip
-   default, app name).
+1. ~~Decide the open questions~~. Done: spec §12 records the decisions.
 2. Merge the planning-docs branch `claude/optimistic-knuth-jvilij` into `main` (before or with
    #2).
 3. #7: connect the Vercel project, so every PR gets preview deploys.
 4. #6: enable branch protection on `main` requiring the CI checks.
-5. #29 (stretch): an Anthropic API key in the Vercel env vars, plus a WAF rate-limit rule.
+5. #29 (future): sign off on the free-OCR evaluation before any build, and before any paid option.
 6. #28: the real-device checklist on iPhone and Android.
