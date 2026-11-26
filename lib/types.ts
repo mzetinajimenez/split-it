@@ -94,7 +94,7 @@ export interface PersonResult {
   personId: string;
   lines: PersonLine[]; // their item portions, in receipt order
   subtotalCents: Cents; // Σ lines
-  discountCents: Cents; // ≤ 0
+  discountCents: Cents; // ≤ 0, except the payer's row, which absorbs rounding and may be ±1¢ the other way (spec §5.2)
   taxCents: Cents;
   feeCents: Cents;
   tipCents: Cents;
