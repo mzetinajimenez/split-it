@@ -1,0 +1,214 @@
+// lib/split.ts: the split engine (spec §5, pinned semantics). The ONLY code that allocates
+// a bill's money to people.
+//
+// Pure and synchronous: no React, no DOM, no `Date`. Every amount is integer minor units;
+// all splitting goes through `allocate` and every percent through `percentOf` (lib/money.ts),
+// so there is no float money math here. Splits are derived at render and never stored.
+
+import { allocate, percentOf } from "./money";
+import type { Adjustment, Bill, Cents, Item, Person, PersonLine, PersonResult, SplitResult } from "./types";
+
+/** A resolved adjustment: its signed cents (discounts ≤ 0, everything else ≥ 0). */
+export type ResolvedAdjustment = SplitResult["adjustments"][number];
+
+/** 0 − x, without producing −0 (keeps deep-equality and formatting clean). */
+function negate(x: Cents): Cents {
+  return x === 0 ? 0 : -x;
+}
+
+function sum(xs: readonly number[]): number {
+  let s = 0;
+  for (const x of xs) s += x;
+  return s;
+}
+
+/**
+ * The claimants of one item, in `people` order (the tie-break order, spec §4), with their
+ * shares. Claims for an id that isn't on `people` (and any share that isn't a positive
+ * integer; 0 is never stored) are ignored, so they can never swallow money: an item whose
+ * only claims are stale is simply unclaimed.
+ */
+function claimantsOf(claims: Record<string, number>, people: readonly Person[]): { personId: string; shares: number }[] {
+  const out: { personId: string; shares: number }[] = [];
+  for (const p of people) {
+    const shares = Object.prototype.hasOwnProperty.call(claims, p.id) ? claims[p.id] : undefined;
+    if (shares !== undefined && Number.isSafeInteger(shares) && shares > 0) out.push({ personId: p.id, shares });
+  }
+  return out;
+}
+
+/** One item's split (spec §5.3): `allocate(price, shares, startIndex = itemIndex)` across claimants. */
+function splitItem(priceCents: Cents, claims: Record<string, number>, people: readonly Person[], itemIndex: number) {
+  const claimants = claimantsOf(claims, people);
+  const shares = claimants.map((c) => c.shares);
+  const cents = allocate(priceCents, shares, itemIndex);
+  const totalShares = sum(shares);
+  return claimants.map((c, i) => ({ ...c, totalShares, cents: cents[i] }));
+}
+
+/**
+ * Live preview for `ItemSplitSheet`: what each claimant would pay for one item. It is the
+ * SAME allocation `computeSplit` runs for item `itemIndex`, so the preview can never disagree
+ * with the engine. Keys are the claimants' person ids (people not claiming are absent).
+ */
+export function previewItemSplit(
+  priceCents: Cents,
+  claims: Record<string, number>,
+  people: Person[],
+  itemIndex: number,
+): Record<string, Cents> {
+  const out: Record<string, Cents> = {};
+  for (const line of splitItem(priceCents, claims, people, itemIndex)) out[line.personId] = line.cents;
+  return out;
+}
+
+function itemsSubtotal(items: readonly Item[]): Cents {
+  let s = 0;
+  for (const item of items) s += item.priceCents;
+  return s;
+}
+
+function amountOf(adj: Adjustment, base: Cents): Cents {
+  return adj.value.type === "amount" ? adj.value.cents : percentOf(base, adj.value.bps);
+}
+
+function resolved(adj: Adjustment, cents: Cents): ResolvedAdjustment {
+  return { id: adj.id, kind: adj.kind, label: adj.label, cents };
+}
+
+/**
+ * Resolve every adjustment to signed cents, in spec §5.4 order: discounts, then tax, then
+ * fees, then tip (bill order within a kind). With S = the items subtotal (claimed or not):
+ *
+ * 1. Discounts: −amount or −percentOf(S). Their total D is clamped to D ≥ −S. The shortfall
+ *    comes off the last discount; if the last one is smaller than the shortfall, the rest
+ *    comes off the one before it, and so on (no discount ever turns positive).
+ * 2. Tax: amount or percentOf(S + D). Total T.
+ * 3. Fees: amount or percentOf(S + D). Total F.
+ * 4. Tip: amount, or percentOf(S) for `pretax` (the default), percentOf(S + D + T + F) for
+ *    `posttax`.
+ */
+export function resolveAdjustments(bill: Bill): ResolvedAdjustment[] {
+  const S = itemsSubtotal(bill.items);
+  const ofKind = (kind: Adjustment["kind"]) => bill.adjustments.filter((a) => a.kind === kind);
+
+  const discounts = ofKind("discount").map((a) => negate(amountOf(a, S)));
+  let excess = negate(sum(discounts)) - S; // how far D overshoots −S
+  for (let i = discounts.length - 1; i >= 0 && excess > 0; i--) {
+    const take = Math.min(excess, negate(discounts[i]));
+    discounts[i] = negate(negate(discounts[i]) - take);
+    excess -= take;
+  }
+  const D = sum(discounts);
+
+  const taxes = ofKind("tax").map((a) => amountOf(a, S + D));
+  const T = sum(taxes);
+  const fees = ofKind("fee").map((a) => amountOf(a, S + D));
+  const F = sum(fees);
+  const tips = ofKind("tip").map((a) => amountOf(a, (a.basis ?? "pretax") === "posttax" ? S + D + T + F : S));
+
+  return [
+    ...ofKind("discount").map((a, i) => resolved(a, discounts[i])),
+    ...ofKind("tax").map((a, i) => resolved(a, taxes[i])),
+    ...ofKind("fee").map((a, i) => resolved(a, fees[i])),
+    ...ofKind("tip").map((a, i) => resolved(a, tips[i])),
+  ];
+}
+
+const COMPONENT = {
+  discount: "discountCents",
+  tax: "taxCents",
+  fee: "feeCents",
+  tip: "tipCents",
+} as const satisfies Record<Adjustment["kind"], keyof PersonResult>;
+
+/**
+ * Split a bill (spec §5). Items are allocated across their claimants by shares; each
+ * resolved adjustment j is then allocated with tie-break `startIndex = items.length + j`
+ * (j is its index in `SplitResult.adjustments`, i.e. §5.4 order):
+ *
+ * - `proportional`: weights are each person's items subtotal, plus an "unclaimed"
+ *   pseudo-participant weighted by the unclaimed items; its portion lands in
+ *   `unclaimed.totalCents`. If every weight is 0, it falls back to equal.
+ * - `equal`: weight 1 for every person on the bill (the pseudo-participant takes no part).
+ * - No people: nothing is allocated; everything is unclaimed.
+ *
+ * Invariant (property-tested): Σ people.totalCents + unclaimed.totalCents === grandTotalCents.
+ */
+export function computeSplit(bill: Bill): SplitResult {
+  const { people, items } = bill;
+  const index = new Map(people.map((p, i) => [p.id, i]));
+  const payer = bill.paidBy !== null && index.has(bill.paidBy) ? bill.paidBy : null;
+  const settled = new Set(bill.settled);
+
+  const results: PersonResult[] = people.map((p) => ({
+    personId: p.id,
+    lines: [] as PersonLine[],
+    subtotalCents: 0,
+    discountCents: 0,
+    taxCents: 0,
+    feeCents: 0,
+    tipCents: 0,
+    totalCents: 0,
+    owesTo: payer !== null && p.id !== payer ? payer : null,
+    settled: settled.has(p.id),
+  }));
+
+  // §5.3 Items.
+  const unclaimed = { itemIds: [] as string[], itemsCents: 0, totalCents: 0 };
+  items.forEach((item, itemIndex) => {
+    const lines = splitItem(item.priceCents, item.claims, people, itemIndex);
+    if (lines.length === 0) {
+      unclaimed.itemIds.push(item.id);
+      unclaimed.itemsCents += item.priceCents;
+      return;
+    }
+    for (const line of lines) {
+      const r = results[index.get(line.personId)!];
+      r.lines.push({ itemId: item.id, name: item.name, shares: line.shares, totalShares: line.totalShares, cents: line.cents });
+      r.subtotalCents += line.cents;
+    }
+  });
+  unclaimed.totalCents = unclaimed.itemsCents;
+
+  // §5.4 resolution, §5.5 allocation.
+  const adjustments = resolveAdjustments(bill);
+  const modeOf = new Map(bill.adjustments.map((a) => [a.id, a.split ?? "proportional"]));
+  const subtotals = results.map((r) => r.subtotalCents);
+  const equalWeights = people.map(() => 1);
+  const proportionalWeights = [...subtotals, unclaimed.itemsCents];
+  const proportionalUsable = sum(proportionalWeights) > 0;
+
+  adjustments.forEach((adj, j) => {
+    if (people.length === 0) {
+      unclaimed.totalCents += adj.cents;
+      return;
+    }
+    const startIndex = items.length + j;
+    const field = COMPONENT[adj.kind];
+    const proportional = modeOf.get(adj.id) !== "equal" && proportionalUsable;
+    const shares = allocate(adj.cents, proportional ? proportionalWeights : equalWeights, startIndex);
+    results.forEach((r, i) => (r[field] += shares[i]));
+    if (proportional) unclaimed.totalCents += shares[people.length];
+  });
+
+  for (const r of results) r.totalCents = r.subtotalCents + r.discountCents + r.taxCents + r.feeCents + r.tipCents;
+
+  const S = itemsSubtotal(items);
+  const adjustmentsTotal = sum(adjustments.map((a) => a.cents));
+  const beforeTip = S + sum(adjustments.filter((a) => a.kind !== "tip").map((a) => a.cents));
+  const { subtotalCents: printedSubtotal, totalCents: printedTotal } = bill.printed;
+
+  return {
+    people: results,
+    itemsSubtotalCents: S,
+    adjustments,
+    grandTotalCents: S + adjustmentsTotal,
+    unclaimed,
+    status: items.length === 0 ? "empty" : unclaimed.itemIds.length > 0 ? "unclaimed" : "balanced",
+    printed: {
+      subtotalDiffCents: printedSubtotal === undefined ? null : S - printedSubtotal,
+      totalDiffCents: printedTotal === undefined ? null : beforeTip - printedTotal,
+    },
+  };
+}
