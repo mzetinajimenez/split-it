@@ -344,11 +344,33 @@ Splits an integer `amount` across non-negative integer `weights` (W = Σ weights
 **Invariants** (property-tested): `Σ result = amount` exactly; `|result_i − amount·w_i/W|
 < 1`; zero weight → 0; deterministic for the same inputs.
 
+#### Rounding with a payer (owner-approved 2026-11-26)
+
+Every split of cents among recipients (an item across its claimants, and every
+proportional or equal adjustment; §5.3, §5.5) goes through one rule:
+
+- **When `bill.paidBy` is set and the payer is one of that split's recipients**, every
+  *other* recipient gets their exact share **rounded to the nearest cent, halves away from
+  zero** (`round(amount × w_i / W)` in exact integer arithmetic), and **the payer gets
+  `amount − Σ others`**. The unclaimed pseudo-participant (§5.5) counts as a non-payer.
+  A negative `amount` rounds `|amount|` and negates.
+- **Otherwise** (no payer, or the payer isn't a recipient of that split, e.g. an item the
+  payer didn't claim), `allocate` above, unchanged.
+
+Consequences:
+- `Σ result = amount` exactly, still.
+- A non-payer is within ½¢ of their exact share. The payer absorbs everyone else's
+  rounding, so they can be off by up to ½¢ per other recipient. Their residue can even run
+  against the amount's sign: −1¢ of a 1¢ tip, or +1¢ of a discount, when the payer's own
+  weight is small or 0.
+- Each non-payer's share depends only on their own weight and W. Claiming an item
+  therefore moves only the claimant, the payer and `unclaimed`, exactly.
+
 ### 5.3 Items
 
 - Each item's `priceCents` is allocated across its claimants by their shares
-  (`allocate(price, shares, startIndex = itemIndex)`). That gives each person's `lines` and
-  `subtotalCents`.
+  (`allocate(price, shares, startIndex = itemIndex)`, or the payer rule in §5.2 when the
+  payer is a claimant). That gives each person's `lines` and `subtotalCents`.
 - **Partial split "x of y":** the claim map has `x` keys with 1 share each. The other
   `y − x` people pay nothing for that item.
 - **Uneven split:** shares 2 : 1 means two thirds and one third.
@@ -379,12 +401,20 @@ Let `S` be the items subtotal (all items, claimed or not: it's what the receipt 
   - *Why:* a person's proportional tax/tip then depends only on their own subtotal and `S`.
     Their running total during claiming is already final for what they've claimed, and it
     doesn't jump when someone else claims an item.
+  - *Exactly so only with a payer set* (§5.2, "Rounding with a payer"). With no payer,
+    `allocate`'s leftover pennies are re-ranked when weights change, so someone else's amount
+    can move by up to 1¢ per proportional adjustment.
 - **`equal`** allocates with weight 1 for **every person on the bill**, including people
   with no items. The unclaimed pseudo-participant takes no part.
 - If every proportional weight is 0 (no items, only a flat fee), proportional falls back to
   equal.
 - If the bill has no people, nothing is allocated and everything is reported unclaimed.
-- Tie-break `startIndex` for adjustment `j` is `items.length + j`.
+- Every split here uses the §5.2 rule: the payer absorbs rounding when the payer is a
+  recipient. With proportional weights, every person and the pseudo-participant are
+  recipients, so this applies whenever a payer is set. Otherwise `allocate`.
+- Tie-break `startIndex` for adjustment `j` is `items.length + j`, where `j` is the
+  adjustment's index in §5.4 order (`SplitResult.adjustments`). It matters only to
+  `allocate`.
 
 ### 5.6 Results and status
 
