@@ -31,8 +31,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # local env files
-.env*.local
-.env
+.env*
 
 # vercel
 .vercel
@@ -46,3 +45,13 @@ next-env.d.ts
 .eslintcache
 .turbo
 .swc
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# scratch (agent tooling)
+.superpowers/
+.playwright-mcp/
