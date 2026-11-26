@@ -1,0 +1,93 @@
+{
+  "opts": {
+    "minorDigits": 0
+  },
+  "parsed": {
+    "items": [
+      {
+        "name": "生ビール",
+        "quantity": 3,
+        "priceCents": 1800,
+        "line": 5,
+        "confidence": "high"
+      },
+      {
+        "name": "枝豆",
+        "quantity": 1,
+        "priceCents": 450,
+        "line": 6,
+        "confidence": "high"
+      },
+      {
+        "name": "焼き鳥",
+        "quantity": 5,
+        "priceCents": 1250,
+        "line": 7,
+        "confidence": "high"
+      },
+      {
+        "name": "Gyoza",
+        "quantity": 2,
+        "priceCents": 960,
+        "line": 8,
+        "confidence": "high"
+      },
+      {
+        "name": "Ramen",
+        "quantity": 1,
+        "priceCents": 980,
+        "line": 9,
+        "confidence": "high"
+      },
+      {
+        "name": "Matcha Ice Cream",
+        "quantity": 1,
+        "priceCents": 550,
+        "line": 10,
+        "confidence": "high"
+      }
+    ],
+    "totals": {
+      "subtotalCents": 5990,
+      "taxCents": 599,
+      "totalCents": 6589
+    },
+    "ignored": [
+      {
+        "line": 1,
+        "text": "居酒屋 さくら",
+        "reason": "no_price"
+      },
+      {
+        "line": 2,
+        "text": "Izakaya Sakura",
+        "reason": "no_price"
+      },
+      {
+        "line": 3,
+        "text": "2026/11/25 19:42",
+        "reason": "no_price"
+      },
+      {
+        "line": 12,
+        "text": "Subtotal          ¥5,990",
+        "reason": "total"
+      },
+      {
+        "line": 13,
+        "text": "Tax (10%)           ¥599",
+        "reason": "total"
+      },
+      {
+        "line": 14,
+        "text": "Total             ¥6,589 JPY",
+        "reason": "total"
+      },
+      {
+        "line": 15,
+        "text": "Card              ¥6,589",
+        "reason": "payment"
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+Order details
+Green Bowl Kitchen
+Delivered Nov 25 at 12:31 PM
+
+Your order
+1x	Spicy Tofu Bowl	$13.49
+2x	Chicken Shawarma Wrap	$23.98
+1x	Side of Hummus	$4.29
+1x	Mango Lassi	$4.99
+
+Subtotal	$46.75
+Delivery Fee	$2.99
+Service Fee	$4.21
+Taxes & Other Fees	$4.15
+Dasher Tip	$7.00
+Total	$65.10
+
+Payment
+Visa •••• 0000	$65.10

@@ -1,0 +1,14 @@
+SUNNY SIDE CAFE
+Catering order #000317
+
+Bagel, plain          12 @ 1.75   21.00
+Cream cheese tub       3 @ 4.50   13.50
+Muffin, blueberry      8 @ 3.25   26.00
+Coffee box (serves 10) 2 @ 24.00  48.00
+Orange juice 1L        4 @ 4.50
+Fruit cup              10 @ 3.00
+Napkins                1 @ 0.00    0.00
+
+Subtotal                       156.50
+Tax 7%                          10.96
+Total                          167.46

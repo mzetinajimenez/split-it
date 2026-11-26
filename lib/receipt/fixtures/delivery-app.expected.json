@@ -1,0 +1,107 @@
+{
+  "opts": {},
+  "parsed": {
+    "items": [
+      {
+        "name": "Spicy Tofu Bowl",
+        "quantity": 1,
+        "priceCents": 1349,
+        "line": 6,
+        "confidence": "high"
+      },
+      {
+        "name": "Chicken Shawarma Wrap",
+        "quantity": 2,
+        "priceCents": 2398,
+        "line": 7,
+        "confidence": "high"
+      },
+      {
+        "name": "Side of Hummus",
+        "quantity": 1,
+        "priceCents": 429,
+        "line": 8,
+        "confidence": "high"
+      },
+      {
+        "name": "Mango Lassi",
+        "quantity": 1,
+        "priceCents": 499,
+        "line": 9,
+        "confidence": "high"
+      },
+      {
+        "name": "Delivery Fee",
+        "quantity": 1,
+        "priceCents": 299,
+        "line": 12,
+        "confidence": "high"
+      },
+      {
+        "name": "Service Fee",
+        "quantity": 1,
+        "priceCents": 421,
+        "line": 13,
+        "confidence": "high"
+      }
+    ],
+    "totals": {
+      "subtotalCents": 4675,
+      "taxCents": 415,
+      "tipCents": 700,
+      "totalCents": 6510
+    },
+    "ignored": [
+      {
+        "line": 1,
+        "text": "Order details",
+        "reason": "no_price"
+      },
+      {
+        "line": 2,
+        "text": "Green Bowl Kitchen",
+        "reason": "no_price"
+      },
+      {
+        "line": 3,
+        "text": "Delivered Nov 25 at 12:31 PM",
+        "reason": "no_price"
+      },
+      {
+        "line": 5,
+        "text": "Your order",
+        "reason": "no_price"
+      },
+      {
+        "line": 11,
+        "text": "Subtotal $46.75",
+        "reason": "total"
+      },
+      {
+        "line": 14,
+        "text": "Taxes & Other Fees $4.15",
+        "reason": "total"
+      },
+      {
+        "line": 15,
+        "text": "Dasher Tip $7.00",
+        "reason": "total"
+      },
+      {
+        "line": 16,
+        "text": "Total $65.10",
+        "reason": "total"
+      },
+      {
+        "line": 18,
+        "text": "Payment",
+        "reason": "no_price"
+      },
+      {
+        "line": 19,
+        "text": "Visa •••• 0000 $65.10",
+        "reason": "payment"
+      }
+    ]
+  }
+}

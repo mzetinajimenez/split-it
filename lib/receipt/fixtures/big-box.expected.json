@@ -1,0 +1,135 @@
+{
+  "opts": {},
+  "parsed": {
+    "items": [
+      {
+        "name": "BANANAS",
+        "quantity": 1,
+        "priceCents": 177,
+        "line": 6,
+        "confidence": "high"
+      },
+      {
+        "name": "MILK 2% GAL",
+        "quantity": 1,
+        "priceCents": 348,
+        "line": 7,
+        "confidence": "high"
+      },
+      {
+        "name": "EGGS LG 18CT",
+        "quantity": 1,
+        "priceCents": 497,
+        "line": 8,
+        "confidence": "high"
+      },
+      {
+        "name": "PAPER TOWEL 6RL",
+        "quantity": 1,
+        "priceCents": 1197,
+        "line": 9,
+        "confidence": "high"
+      },
+      {
+        "name": "DISH SOAP",
+        "quantity": 1,
+        "priceCents": 394,
+        "line": 10,
+        "confidence": "high"
+      },
+      {
+        "name": "GREEK YOGURT",
+        "quantity": 1,
+        "priceCents": 500,
+        "line": 12,
+        "confidence": "high"
+      },
+      {
+        "name": "AA BATTERY 8PK",
+        "quantity": 1,
+        "priceCents": 788,
+        "line": 13,
+        "confidence": "high"
+      },
+      {
+        "name": "BREAD WHEAT",
+        "quantity": 1,
+        "priceCents": 298,
+        "line": 14,
+        "confidence": "high"
+      }
+    ],
+    "totals": {
+      "subtotalCents": 4199,
+      "taxCents": 143,
+      "totalCents": 4342
+    },
+    "ignored": [
+      {
+        "line": 1,
+        "text": "MEGAMART #0000",
+        "reason": "no_price"
+      },
+      {
+        "line": 2,
+        "text": "SUPERCENTER",
+        "reason": "no_price"
+      },
+      {
+        "line": 3,
+        "text": "ANYTOWN ST 00000",
+        "reason": "no_price"
+      },
+      {
+        "line": 4,
+        "text": "ST# 0000 OP# 000012 TE# 12 TR# 04211",
+        "reason": "no_price"
+      },
+      {
+        "line": 11,
+        "text": "2 @ 2.50",
+        "reason": "noise"
+      },
+      {
+        "line": 16,
+        "text": "SUBTOTAL                    41.99",
+        "reason": "total"
+      },
+      {
+        "line": 17,
+        "text": "TAX 1   6.000 %              1.43",
+        "reason": "total"
+      },
+      {
+        "line": 18,
+        "text": "TOTAL                       43.42",
+        "reason": "total"
+      },
+      {
+        "line": 19,
+        "text": "DEBIT TEND                  43.42",
+        "reason": "payment"
+      },
+      {
+        "line": 20,
+        "text": "CHANGE DUE                   0.00",
+        "reason": "payment"
+      },
+      {
+        "line": 22,
+        "text": "# ITEMS SOLD 9",
+        "reason": "no_price"
+      },
+      {
+        "line": 23,
+        "text": "TC# 0000 0000 0000 0000 0000",
+        "reason": "no_price"
+      },
+      {
+        "line": 24,
+        "text": "11/25/26        14:32:07",
+        "reason": "no_price"
+      }
+    ]
+  }
+}
