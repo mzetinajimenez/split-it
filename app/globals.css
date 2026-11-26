@@ -74,50 +74,6 @@
   --radius-*: initial;
   --radius-sm: 3px;
 
-  /* Motion */
-  --animate-fade-in: fade-in 160ms ease-out both;
-  --animate-sheet-up: sheet-up 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-pop: pop 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-print: print 240ms steps(6, end) both;
-
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  @keyframes sheet-up {
-    from {
-      transform: translateY(100%);
-    }
-    to {
-      transform: translateY(0);
-    }
-  }
-  @keyframes pop {
-    0% {
-      transform: scale(0.6);
-      opacity: 0;
-    }
-    70% {
-      transform: scale(1.08);
-      opacity: 1;
-    }
-    100% {
-      transform: scale(1);
-    }
-  }
-  /* A receipt line "printing" in: revealed top-down in a few discrete steps. */
-  @keyframes print {
-    from {
-      clip-path: inset(0 0 100% 0);
-    }
-    to {
-      clip-path: inset(0 0 0 0);
-    }
-  }
 }
 
 @layer base {
@@ -127,6 +83,17 @@
     font-family: var(--font-body);
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    /* Overscroll never chains past the app: no rubber-band reveal on iOS, no Android
+       pull-to-refresh mid-scroll. Sheet.tsx contains its own body separately. */
+    overscroll-behavior-y: contain;
   }
 
   body {
@@ -147,8 +114,8 @@
     color: var(--color-on-person);
   }
 
-  /* One focus ring for every control: 2px ink with a ground gap, so it reads on every
-     surface including accent and person fills. Mouse/touch focus shows nothing. */
+  /* One focus ring for every control: 2px ink offset 2px outside the control, so it sits on
+     the surrounding surface (15:1 on ground) whatever the control's own fill. */
   :focus-visible {
     outline: 2px solid var(--color-ink);
     outline-offset: 2px;
@@ -167,6 +134,58 @@
 /* Perforated receipt edge for a section break: a dashed hairline in the rule token. */
 @utility rule-perforated {
   border-top: 1px dashed var(--color-rule-strong);
+}
+
+/* Overlay + toast motion, ported from savor (keyframes prefixed for split-it). #5's Sheet and
+   Toast consume the class names: anim-fade, anim-sheet, anim-pop, anim-toast. Disabled under
+   prefers-reduced-motion below. */
+@keyframes splitit-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes splitit-sheet {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes splitit-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes splitit-toast {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.anim-fade {
+  animation: splitit-fade 0.2s ease-out;
+}
+.anim-sheet {
+  animation: splitit-sheet 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.anim-pop {
+  animation: splitit-pop 0.2s ease-out;
+}
+.anim-toast {
+  animation: splitit-toast 0.22s ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {

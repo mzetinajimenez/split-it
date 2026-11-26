@@ -242,6 +242,13 @@ describe("theme contract", () => {
     expect(theme).toMatch(/--color-\*:\s*initial/);
   });
 
+  it("provides the motion classes #5's Sheet and Toast consume, with a reduced-motion block", () => {
+    for (const cls of ["anim-fade", "anim-sheet", "anim-pop", "anim-toast"]) {
+      expect(globalsCss).toMatch(new RegExp(`\\.${cls}\\s*\\{\\s*animation:`));
+    }
+    expect(globalsCss).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
+  });
+
   it("has no raw hex colours in app/ outside the token definitions", () => {
     const hex = /(?<![\w&])#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![\w-])/gi;
     const offenders: string[] = [];
