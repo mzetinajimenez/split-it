@@ -7,10 +7,10 @@
 //
 // "The bottom bar" is BOTH the global BottomNav and the bill workspace's StepNav: the StepNav
 // reuses the BottomNav's fixed-bottom slot, so one offset clears either. The offset is owned
-// by #11's BOTTOM_BAR_CLEARANCE; until #11 lands it is the savor value below, and #11 swaps
-// this class for its constant (pre-agreed touch point in the v1 plan).
+// by #11's BOTTOM_BAR_CLEARANCE; it comes from nav/tabs.tsx.
 
 import { useSyncExternalStore } from "react";
+import { BOTTOM_BAR_CLEARANCE } from "./nav/tabs";
 
 type ToastItem = { id: number; message: string; error?: boolean };
 
@@ -50,7 +50,7 @@ export function Toaster() {
     <div
       aria-live="polite"
       aria-atomic="false"
-      className="pointer-events-none fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-40 flex flex-col items-center gap-2 px-4 md:pl-60 md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
+      className={`pointer-events-none fixed inset-x-0 ${BOTTOM_BAR_CLEARANCE} z-40 flex flex-col items-center gap-2 px-4 md:pl-60`}
     >
       {current.map((t) => (
         <div
