@@ -42,6 +42,9 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
+    // Builds the E2E-only harness routes under app/harness/ (they 404 in every other build).
+    // Read at build time, so it must be set for `npm run build`, not just `start`.
+    env: { SPLIT_IT_E2E_HARNESS: "1" },
     stdout: "pipe",
     stderr: "pipe",
   },

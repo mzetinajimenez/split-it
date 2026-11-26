@@ -2,6 +2,8 @@
 
 A mobile-first web app for splitting an itemized bill at the table, quickly and fairly.
 
+- Production: <https://split-it-peach.vercel.app> (deploys from `main`; every PR gets a Vercel preview URL)
+
 - Design spec: [`docs/superpowers/specs/2026-11-25-split-it-design.md`](docs/superpowers/specs/2026-11-25-split-it-design.md)
 - Implementation plan: [`docs/superpowers/plans/2026-11-25-split-it-v1-plan.md`](docs/superpowers/plans/2026-11-25-split-it-v1-plan.md)
 - Contributor and agent rules: [`CLAUDE.md`](CLAUDE.md)
