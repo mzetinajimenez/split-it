@@ -1,0 +1,27 @@
+/* Overlay + toast motion for Sheet.tsx and Toast.tsx (ported from savor's globals.css).
+   Lives beside the components rather than in app/globals.css, which #4 (theme) owns, so the
+   overlay port and the palette never edit the same file. Imported by Sheet.tsx and Toast.tsx;
+   Next dedupes the stylesheet. Disabled under prefers-reduced-motion below. */
+
+@keyframes split-it-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes split-it-sheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes split-it-pop { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes split-it-toast { from { opacity: 0; transform: translateY(0.75rem); } to { opacity: 1; transform: translateY(0); } }
+
+.anim-fade { animation: split-it-fade 0.2s ease-out; }
+.anim-sheet { animation: split-it-sheet 0.26s cubic-bezier(0.22, 1, 0.36, 1); }
+.anim-toast { animation: split-it-toast 0.22s ease-out; }
+
+/* From `sm` (40rem) up the sheet is a centred modal, so it pops instead of sliding up from the
+   edge. savor wrote this as a `sm:anim-pop` class; a plain class can't take a Tailwind variant,
+   so the breakpoint lives here instead. */
+@media (min-width: 40rem) {
+  .anim-sheet { animation: split-it-pop 0.2s ease-out; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade, .anim-sheet, .anim-toast {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

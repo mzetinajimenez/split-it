@@ -11,6 +11,7 @@
 // this class for its constant (pre-agreed touch point in the v1 plan).
 
 import { useSyncExternalStore } from "react";
+import "./overlay-motion.css";
 
 type ToastItem = { id: number; message: string; error?: boolean };
 
