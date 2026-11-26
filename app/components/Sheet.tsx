@@ -18,7 +18,6 @@ import {
 } from "react";
 import { dragOffset, dragVelocity, shouldDismiss } from "@/lib/sheetDrag";
 import { useModalA11y } from "@/lib/useModalA11y";
-import "./overlay-motion.css";
 
 export default function Sheet({
   title,
@@ -109,7 +108,7 @@ export default function Sheet({
           // No transition while the finger is down — the sheet must track it exactly.
           transition: dragging ? "none" : "transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
-        className="anim-sheet flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-sm bg-raised shadow-2xl ring-1 ring-rule/60 outline-none sm:rounded-sm"
+        className="anim-sheet flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-sm bg-raised shadow-2xl ring-1 ring-rule/60 outline-none sm:anim-pop sm:rounded-sm"
       >
         <div
           className="relative shrink-0 touch-none px-5 pt-3"
