@@ -1,7 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// e2e runs against a production build (`next build && next start`), not the dev
+// server: it's what ships, and it avoids dev-only overlays and on-demand compile
+// flakiness. Port 3100 keeps it clear of a `npm run dev` on :3000.
+// 127.0.0.1 rather than localhost: localhost can resolve to ::1 first, which
+// the server may not be listening on.
 const PORT = 3100;
-const baseURL = `http://localhost:${PORT}`;
+const baseURL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",

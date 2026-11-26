@@ -13,5 +13,7 @@ export default defineConfig([
     "playwright-report/**",
     "test-results/**",
     ".claude/**",
+    // Agent worktrees are full checkouts of the repo; never lint them.
+    ".claude/worktrees/**",
   ]),
 ]);
