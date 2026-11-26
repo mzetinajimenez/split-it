@@ -94,7 +94,7 @@ export function ConfirmBox({
           type="button"
           onClick={onConfirm}
           disabled={busy}
-          className="min-h-11 flex-1 rounded-sm bg-danger-deep px-4 text-sm font-semibold text-ground transition active:scale-[0.97] md:hover:opacity-90 disabled:opacity-50"
+          className="min-h-11 flex-1 rounded-sm bg-danger-deep px-4 text-sm font-semibold text-on-accent transition active:scale-[0.97] md:hover:opacity-90 disabled:opacity-50"
         >
           {confirmLabel}
         </button>
