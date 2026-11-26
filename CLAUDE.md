@@ -32,6 +32,12 @@ npm run test:e2e   # Playwright against the production build on :3100 (mobile + 
   build && npm run test:e2e` must all pass. Never skip, disable or weaken a test to get
   green. The e2e suite builds and serves a production bundle across two viewport projects,
   so it is slower than the rest — run it before pushing, not on every save.
+  The same gate runs in CI (`.github/workflows/ci.yml`, #6) as separate required checks:
+  `lint` (`--max-warnings 0`), `typecheck`, `unit`, `build`, `bundle` (first-load JS budget
+  and ≤10 kB growth over `main` without `bundle-approved`), `e2e` (mobile + desktop),
+  `deps-guard` (dependency changes need `deps-approved`; `npm ci` and
+  `npm audit --audit-level=high` must pass), `pr-title` (conventional title + `Closes #<n>`)
+  and `codeql`. A PR merges only when all of them are green.
 - **Ask before adding dependencies.** The dependency set is deliberately tiny: `dexie`,
   `dexie-react-hooks`, `next`, `react`, `react-dom`, `zod`; dev: `typescript`, `@types/*`,
   `tailwindcss`, `@tailwindcss/postcss`, `eslint`, `eslint-config-next`, `vitest`,
