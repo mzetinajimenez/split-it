@@ -1,0 +1,117 @@
+{
+  "opts": {},
+  "parsed": {
+    "items": [
+      {
+        "name": "Organic Apples",
+        "quantity": 1,
+        "priceCents": 649,
+        "line": 4,
+        "confidence": "high"
+      },
+      {
+        "name": "Sourdough Loaf",
+        "quantity": 1,
+        "priceCents": 599,
+        "line": 5,
+        "confidence": "high"
+      },
+      {
+        "name": "Member Savings",
+        "quantity": 1,
+        "priceCents": -100,
+        "line": 6,
+        "confidence": "high"
+      },
+      {
+        "name": "Olive Oil 500ml",
+        "quantity": 1,
+        "priceCents": 1299,
+        "line": 7,
+        "confidence": "high"
+      },
+      {
+        "name": "Coupon",
+        "quantity": 1,
+        "priceCents": -200,
+        "line": 8,
+        "confidence": "high"
+      },
+      {
+        "name": "Cheddar Block",
+        "quantity": 1,
+        "priceCents": 749,
+        "line": 9,
+        "confidence": "high"
+      },
+      {
+        "name": "Sparkling Water 12pk",
+        "quantity": 1,
+        "priceCents": 699,
+        "line": 10,
+        "confidence": "high"
+      },
+      {
+        "name": "BOGO 50% off",
+        "quantity": 1,
+        "priceCents": -350,
+        "line": 11,
+        "confidence": "high"
+      },
+      {
+        "name": "Coffee Beans 1lb",
+        "quantity": 1,
+        "priceCents": 1499,
+        "line": 12,
+        "confidence": "high"
+      }
+    ],
+    "totals": {
+      "subtotalCents": 4844,
+      "taxCents": 122,
+      "totalCents": 4966
+    },
+    "ignored": [
+      {
+        "line": 1,
+        "text": "FRESH & CO GROCERS",
+        "reason": "no_price"
+      },
+      {
+        "line": 2,
+        "text": "Store 012",
+        "reason": "no_price"
+      },
+      {
+        "line": 14,
+        "text": "Subtotal                48.44",
+        "reason": "total"
+      },
+      {
+        "line": 15,
+        "text": "Tax                      1.22",
+        "reason": "total"
+      },
+      {
+        "line": 16,
+        "text": "Total                   49.66",
+        "reason": "total"
+      },
+      {
+        "line": 17,
+        "text": "Cash                    60.00",
+        "reason": "payment"
+      },
+      {
+        "line": 18,
+        "text": "Change                  10.34",
+        "reason": "payment"
+      },
+      {
+        "line": 20,
+        "text": "You saved $6.50 today!",
+        "reason": "no_price"
+      }
+    ]
+  }
+}

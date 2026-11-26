@@ -1,0 +1,150 @@
+{
+  "opts": {},
+  "parsed": {
+    "items": [
+      {
+        "name": "Burrata",
+        "quantity": 1,
+        "priceCents": 1400,
+        "line": 11,
+        "confidence": "high"
+      },
+      {
+        "name": "Caesar Salad",
+        "quantity": 1,
+        "priceCents": 1250,
+        "line": 12,
+        "confidence": "high"
+      },
+      {
+        "name": "Steak Frites",
+        "quantity": 2,
+        "priceCents": 5800,
+        "line": 13,
+        "confidence": "high"
+      },
+      {
+        "name": "Mushroom Risotto",
+        "quantity": 1,
+        "priceCents": 2400,
+        "line": 14,
+        "confidence": "high"
+      },
+      {
+        "name": "Grilled Salmon",
+        "quantity": 1,
+        "priceCents": 2750,
+        "line": 15,
+        "confidence": "high"
+      },
+      {
+        "name": "Glass House Red",
+        "quantity": 2,
+        "priceCents": 2400,
+        "line": 16,
+        "confidence": "high"
+      },
+      {
+        "name": "Sparkling Water",
+        "quantity": 1,
+        "priceCents": 600,
+        "line": 17,
+        "confidence": "high"
+      },
+      {
+        "name": "Chocolate Torte",
+        "quantity": 1,
+        "priceCents": 1000,
+        "line": 18,
+        "confidence": "high"
+      }
+    ],
+    "totals": {
+      "subtotalCents": 17600,
+      "taxCents": 1562,
+      "totalCents": 19162
+    },
+    "ignored": [
+      {
+        "line": 1,
+        "text": "THE COPPER KETTLE",
+        "reason": "no_price"
+      },
+      {
+        "line": 2,
+        "text": "Bistro & Bar",
+        "reason": "no_price"
+      },
+      {
+        "line": 3,
+        "text": "100 Example Avenue",
+        "reason": "no_price"
+      },
+      {
+        "line": 4,
+        "text": "Springfield, ST 00000",
+        "reason": "no_price"
+      },
+      {
+        "line": 5,
+        "text": "Tel (555) 010-0199",
+        "reason": "no_price"
+      },
+      {
+        "line": 7,
+        "text": "Server: Alex          Table 14",
+        "reason": "no_price"
+      },
+      {
+        "line": 8,
+        "text": "Guests: 4",
+        "reason": "no_price"
+      },
+      {
+        "line": 9,
+        "text": "11/25/26  7:42 PM     Chk 4821",
+        "reason": "no_price"
+      },
+      {
+        "line": 20,
+        "text": "Subtotal               176.00",
+        "reason": "total"
+      },
+      {
+        "line": 21,
+        "text": "Sales Tax 8.875%        15.62",
+        "reason": "total"
+      },
+      {
+        "line": 22,
+        "text": "TOTAL                  191.62",
+        "reason": "total"
+      },
+      {
+        "line": 24,
+        "text": "Suggested Gratuity:",
+        "reason": "no_price"
+      },
+      {
+        "line": 25,
+        "text": "18%  31.68   20%  35.20   22%  38.72",
+        "reason": "noise"
+      },
+      {
+        "line": 27,
+        "text": "Tip _______________",
+        "reason": "no_price"
+      },
+      {
+        "line": 28,
+        "text": "Total _____________",
+        "reason": "no_price"
+      },
+      {
+        "line": 30,
+        "text": "Thank you for dining with us!",
+        "reason": "no_price"
+      }
+    ]
+  }
+}

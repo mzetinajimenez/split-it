@@ -1,0 +1,97 @@
+{
+  "opts": {},
+  "parsed": {
+    "items": [
+      {
+        "name": "Margherita Pizza",
+        "quantity": 1,
+        "priceCents": 1650,
+        "line": 3,
+        "confidence": "high"
+      },
+      {
+        "name": "Garlic Knots",
+        "quantity": 2,
+        "priceCents": 900,
+        "line": 4,
+        "confidence": "high"
+      },
+      {
+        "name": "Caprese Salad",
+        "quantity": 1,
+        "priceCents": 1100,
+        "line": 5,
+        "confidence": "high"
+      },
+      {
+        "name": "Lemonade",
+        "quantity": 1,
+        "priceCents": 375,
+        "line": 7,
+        "confidence": "high"
+      }
+    ],
+    "totals": {
+      "subtotalCents": 6200,
+      "taxCents": 512,
+      "totalCents": 6712
+    },
+    "ignored": [
+      {
+        "line": 1,
+        "text": "~~ PIZZERIA  N0VA ~~",
+        "reason": "no_price"
+      },
+      {
+        "line": 2,
+        "text": "l23 Exarnple Rd",
+        "reason": "no_price"
+      },
+      {
+        "line": 6,
+        "text": "Tiramisu       7.5O",
+        "reason": "no_price"
+      },
+      {
+        "line": 8,
+        "text": ". 4.00",
+        "reason": "noise"
+      },
+      {
+        "line": 9,
+        "text": "Calzone",
+        "reason": "no_price"
+      },
+      {
+        "line": 10,
+        "text": "14.25",
+        "reason": "noise"
+      },
+      {
+        "line": 11,
+        "text": "#  Subtotal ...... 62.00",
+        "reason": "total"
+      },
+      {
+        "line": 12,
+        "text": "TAX ....... 5.12",
+        "reason": "total"
+      },
+      {
+        "line": 13,
+        "text": "T0TAL  67.12",
+        "reason": "total"
+      },
+      {
+        "line": 14,
+        "text": "* * * * * * * * * *",
+        "reason": "no_price"
+      },
+      {
+        "line": 15,
+        "text": "ARPROVAL # 00O0O0",
+        "reason": "no_price"
+      }
+    ]
+  }
+}

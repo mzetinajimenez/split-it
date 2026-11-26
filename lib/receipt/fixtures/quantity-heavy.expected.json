@@ -1,0 +1,88 @@
+{
+  "opts": {},
+  "parsed": {
+    "items": [
+      {
+        "name": "Bagel, plain",
+        "quantity": 12,
+        "priceCents": 2100,
+        "line": 4,
+        "confidence": "high"
+      },
+      {
+        "name": "Cream cheese tub",
+        "quantity": 3,
+        "priceCents": 1350,
+        "line": 5,
+        "confidence": "high"
+      },
+      {
+        "name": "Muffin, blueberry",
+        "quantity": 8,
+        "priceCents": 2600,
+        "line": 6,
+        "confidence": "high"
+      },
+      {
+        "name": "Coffee box (serves 10)",
+        "quantity": 2,
+        "priceCents": 4800,
+        "line": 7,
+        "confidence": "high"
+      },
+      {
+        "name": "Orange juice 1L",
+        "quantity": 4,
+        "priceCents": 1800,
+        "line": 8,
+        "confidence": "high"
+      },
+      {
+        "name": "Fruit cup",
+        "quantity": 10,
+        "priceCents": 3000,
+        "line": 9,
+        "confidence": "high"
+      },
+      {
+        "name": "Napkins",
+        "quantity": 1,
+        "priceCents": 0,
+        "line": 10,
+        "confidence": "high"
+      }
+    ],
+    "totals": {
+      "subtotalCents": 15650,
+      "taxCents": 1096,
+      "totalCents": 16746
+    },
+    "ignored": [
+      {
+        "line": 1,
+        "text": "SUNNY SIDE CAFE",
+        "reason": "no_price"
+      },
+      {
+        "line": 2,
+        "text": "Catering order #000317",
+        "reason": "no_price"
+      },
+      {
+        "line": 12,
+        "text": "Subtotal                       156.50",
+        "reason": "total"
+      },
+      {
+        "line": 13,
+        "text": "Tax 7%                          10.96",
+        "reason": "total"
+      },
+      {
+        "line": 14,
+        "text": "Total                          167.46",
+        "reason": "total"
+      }
+    ]
+  }
+}
