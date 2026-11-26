@@ -244,9 +244,9 @@ describe("theme contract", () => {
     expect(theme).toMatch(/--color-\*:\s*initial/);
   });
 
-  it("provides the motion classes #5's Sheet and Toast consume, with a reduced-motion block", () => {
+  it("provides the motion utilities #5's Sheet and Toast consume (variant-capable), with a reduced-motion block", () => {
     for (const cls of ["anim-fade", "anim-sheet", "anim-pop", "anim-toast"]) {
-      expect(globalsCss).toMatch(new RegExp(`\\.${cls}\\s*\\{\\s*animation:`));
+      expect(globalsCss).toMatch(new RegExp(`@utility ${cls}\\s*\\{\\s*animation:\\s*splitit-`));
     }
     expect(globalsCss).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
   });

@@ -138,7 +138,8 @@
 }
 
 /* Overlay + toast motion, ported from savor (keyframes prefixed for split-it). #5's Sheet and
-   Toast consume the class names: anim-fade, anim-sheet, anim-pop, anim-toast. Disabled under
+   Toast consume the class names: anim-fade, anim-sheet, anim-pop, anim-toast. They are @utility
+   declarations (not plain classes) so Tailwind variants apply, e.g. `sm:anim-pop`. Disabled under
    prefers-reduced-motion below. */
 @keyframes splitit-fade {
   from {
@@ -176,16 +177,16 @@
     transform: translateY(0);
   }
 }
-.anim-fade {
+@utility anim-fade {
   animation: splitit-fade 0.2s ease-out;
 }
-.anim-sheet {
+@utility anim-sheet {
   animation: splitit-sheet 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.anim-pop {
+@utility anim-pop {
   animation: splitit-pop 0.2s ease-out;
 }
-.anim-toast {
+@utility anim-toast {
   animation: splitit-toast 0.22s ease-out;
 }
 

@@ -73,7 +73,7 @@ export function Showcase() {
   const [basis, setBasis] = useState<"amount" | "percent">("amount");
 
   return (
-    <div className="mx-auto max-w-3xl bg-ground pb-16">
+    <div className="mx-auto max-w-3xl bg-ground pb-16 anim-fade sm:anim-pop">
       <HeaderShell
         title="Friday at Lupe's"
         subtitle="Tonight · 6 people"
