@@ -191,6 +191,42 @@ function stringLiterals(file: string, source: string): string[] {
 }
 
 /* ---------------------------------------------------------------------------------------- */
+/* Raw hex                                                                                   */
+/* ---------------------------------------------------------------------------------------- */
+
+const HEX = /(?<![\w&])#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![\w-])/i;
+
+/**
+ * Lines holding a raw hex colour. In TS/TSX, comments are skipped (ranges from the TypeScript AST)
+ * so prose such as "React #418" isn't mistaken for a colour; every code token, including
+ * strings, templates and JSX text, is checked. CSS is checked line by line.
+ */
+export function hexLines(file: string, source: string): { line: number; text: string }[] {
+  const lines = source.split("\n");
+  if (file.endsWith(".css")) {
+    return lines.flatMap((text, i) => (HEX.test(text) ? [{ line: i + 1, text }] : []));
+  }
+  // Blank every comment (keeping newlines so line numbers hold), then check line by line.
+  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const chars = source.split("");
+  const blank = (ranges: ts.CommentRange[] | undefined) =>
+    ranges?.forEach(({ pos, end }) => {
+      for (let i = pos; i < end; i++) if (chars[i] !== "\n") chars[i] = " ";
+    });
+  const visit = (n: ts.Node) => {
+    blank(ts.getLeadingCommentRanges(source, n.getFullStart()));
+    blank(ts.getTrailingCommentRanges(source, n.getEnd()));
+    n.forEachChild(visit);
+  };
+  visit(sf);
+  blank(ts.getLeadingCommentRanges(source, sf.endOfFileToken.getFullStart()));
+  return chars
+    .join("")
+    .split("\n")
+    .flatMap((code, i) => (HEX.test(code) ? [{ line: i + 1, text: lines[i] }] : []));
+}
+
+/* ---------------------------------------------------------------------------------------- */
 /* Contrast                                                                                  */
 /* ---------------------------------------------------------------------------------------- */
 
@@ -252,19 +288,13 @@ describe("theme contract", () => {
   });
 
   it("has no raw hex colours in app/ outside the token definitions", () => {
-    const hex = /(?<![\w&])#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![\w-])/gi;
     const offenders: string[] = [];
     for (const f of appFiles) {
-      readFileSync(f, "utf8")
-        .split("\n")
-        .forEach((line, i) => {
-          if (!hex.test(line)) return;
-          hex.lastIndex = 0;
-          const isTokenDef = f === GLOBALS && /^\s*--color-[a-z0-9-]+:\s*#[0-9a-f]{6}\s*;/i.test(line);
-          const isThemeColor = /\bthemeColor\b/.test(line);
-          if (!isTokenDef && !isThemeColor) offenders.push(`${relative(ROOT, f)}:${i + 1}: ${line.trim()}`);
-        });
-      hex.lastIndex = 0;
+      for (const { line, text } of hexLines(f, readFileSync(f, "utf8"))) {
+        const isTokenDef = f === GLOBALS && /^\s*--color-[a-z0-9-]+:\s*#[0-9a-f]{6}\s*;/i.test(text);
+        const isThemeColor = /\bthemeColor\b/.test(text);
+        if (!isTokenDef && !isThemeColor) offenders.push(`${relative(ROOT, f)}:${line}: ${text.trim()}`);
+      }
     }
     expect(offenders).toEqual([]);
   });
@@ -303,6 +333,20 @@ describe("theme contract", () => {
     expect(a, fg).toBeDefined();
     expect(b, bg).toBeDefined();
     expect(contrast(a!, b!)).toBeGreaterThanOrEqual(min);
+  });
+
+  describe("hexLines (self-test)", () => {
+    it("finds hex in strings, JSX text and className, not in comments", () => {
+      const src = [
+        "// React #418 in a comment is fine",
+        "/* so is #fff here */",
+        'const a = "#ff0000";',
+        "const b = <p>#abc</p>;",
+        'const c = <div className="bg-[#eeeeee]" />;',
+        "const d = `${x}#123456`;",
+      ].join("\n");
+      expect(hexLines("x.tsx", src).map((h) => h.line)).toEqual([3, 4, 5, 6]);
+    });
   });
 
   describe("checkClass (self-test)", () => {
