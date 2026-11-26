@@ -2,8 +2,9 @@
 // a bill's money to people.
 //
 // Pure and synchronous: no React, no DOM, no `Date`. Every amount is integer minor units;
-// all splitting goes through `allocate` and every percent through `percentOf` (lib/money.ts),
-// so there is no float money math here. Splits are derived at render and never stored.
+// every split goes through `distribute` (below, over lib/money.ts `allocate`) and every
+// percent through `percentOf`, so there is no float money math here. Splits are derived at
+// render and never stored.
 
 import { allocate, percentOf } from "./money";
 import type { Adjustment, Bill, Cents, Item, Person, PersonLine, PersonResult, SplitResult } from "./types";
@@ -23,6 +24,30 @@ function sum(xs: readonly number[]): number {
 }
 
 /**
+ * Who is sharing one amount: participant ids parallel to the weights (`null` = the
+ * "unclaimed" pseudo-participant), and the bill's payer (null when none is set or the id
+ * isn't on the bill). `distribute` gets this so a payer-aware rounding rule can drop in.
+ */
+interface DistributeContext {
+  startIndex: number;
+  ids: readonly (string | null)[];
+  payerId: string | null;
+}
+
+/**
+ * THE rounding seam: turns one amount into whole cents across weighted participants. Every
+ * item split, every adjustment split and `previewItemSplit` goes through this one function,
+ * so a different leftover-cent rule replaces only this body.
+ *
+ * Today it's the pinned spec §5.2 rule: largest remainder, ties rotating from
+ * `startIndex` (`allocate`). `ids` and `payerId` aren't used by that rule yet.
+ * Contract for any replacement: Σ result === amount, a zero weight gets 0, deterministic.
+ */
+function distribute(amount: Cents, weights: readonly number[], ctx: DistributeContext): Cents[] {
+  return allocate(amount, [...weights], ctx.startIndex);
+}
+
+/**
  * The claimants of one item, in `people` order (the tie-break order, spec §4), with their
  * shares. Claims for an id that isn't on `people` (and any share that isn't a positive
  * integer; 0 is never stored) are ignored, so they can never swallow money: an item whose
@@ -38,10 +63,16 @@ function claimantsOf(claims: Record<string, number>, people: readonly Person[]):
 }
 
 /** One item's split (spec §5.3): `allocate(price, shares, startIndex = itemIndex)` across claimants. */
-function splitItem(priceCents: Cents, claims: Record<string, number>, people: readonly Person[], itemIndex: number) {
+function splitItem(
+  priceCents: Cents,
+  claims: Record<string, number>,
+  people: readonly Person[],
+  itemIndex: number,
+  payerId: string | null,
+) {
   const claimants = claimantsOf(claims, people);
   const shares = claimants.map((c) => c.shares);
-  const cents = allocate(priceCents, shares, itemIndex);
+  const cents = distribute(priceCents, shares, { startIndex: itemIndex, ids: claimants.map((c) => c.personId), payerId });
   const totalShares = sum(shares);
   return claimants.map((c, i) => ({ ...c, totalShares, cents: cents[i] }));
 }
@@ -50,6 +81,10 @@ function splitItem(priceCents: Cents, claims: Record<string, number>, people: re
  * Live preview for `ItemSplitSheet`: what each claimant would pay for one item. It is the
  * SAME allocation `computeSplit` runs for item `itemIndex`, so the preview can never disagree
  * with the engine. Keys are the claimants' person ids (people not claiming are absent).
+ *
+ * The pinned signature carries no payer, so it passes none: that matches `computeSplit`
+ * as long as `distribute` ignores the payer (today's rule). A payer-aware rule would need a
+ * `paidBy` argument here too.
  */
 export function previewItemSplit(
   priceCents: Cents,
@@ -58,7 +93,7 @@ export function previewItemSplit(
   itemIndex: number,
 ): Record<string, Cents> {
   const out: Record<string, Cents> = {};
-  for (const line of splitItem(priceCents, claims, people, itemIndex)) out[line.personId] = line.cents;
+  for (const line of splitItem(priceCents, claims, people, itemIndex, null)) out[line.personId] = line.cents;
   return out;
 }
 
@@ -157,7 +192,7 @@ export function computeSplit(bill: Bill): SplitResult {
   // §5.3 Items.
   const unclaimed = { itemIds: [] as string[], itemsCents: 0, totalCents: 0 };
   items.forEach((item, itemIndex) => {
-    const lines = splitItem(item.priceCents, item.claims, people, itemIndex);
+    const lines = splitItem(item.priceCents, item.claims, people, itemIndex, payer);
     if (lines.length === 0) {
       unclaimed.itemIds.push(item.id);
       unclaimed.itemsCents += item.priceCents;
@@ -175,8 +210,10 @@ export function computeSplit(bill: Bill): SplitResult {
   const adjustments = resolveAdjustments(bill);
   const modeOf = new Map(bill.adjustments.map((a) => [a.id, a.split ?? "proportional"]));
   const subtotals = results.map((r) => r.subtotalCents);
+  const personIds = people.map((p) => p.id);
   const equalWeights = people.map(() => 1);
   const proportionalWeights = [...subtotals, unclaimed.itemsCents];
+  const proportionalIds = [...personIds, null];
   const proportionalUsable = sum(proportionalWeights) > 0;
 
   adjustments.forEach((adj, j) => {
@@ -187,7 +224,9 @@ export function computeSplit(bill: Bill): SplitResult {
     const startIndex = items.length + j;
     const field = COMPONENT[adj.kind];
     const proportional = modeOf.get(adj.id) !== "equal" && proportionalUsable;
-    const shares = allocate(adj.cents, proportional ? proportionalWeights : equalWeights, startIndex);
+    const shares = proportional
+      ? distribute(adj.cents, proportionalWeights, { startIndex, ids: proportionalIds, payerId: payer })
+      : distribute(adj.cents, equalWeights, { startIndex, ids: personIds, payerId: payer });
     results.forEach((r, i) => (r[field] += shares[i]));
     if (proportional) unclaimed.totalCents += shares[people.length];
   });
