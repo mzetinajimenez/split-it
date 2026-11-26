@@ -20,7 +20,8 @@
  *   on-accent  on accent  5.76 · accent-deep  8.87
  *   attention  on ground  5.52 · ground-deep  4.91 · raised  5.97   (text-legal on all)
  *   danger     on ground  5.80 · ground-deep  5.16 · raised  6.27
- *   on-accent  on danger  6.27 · danger-deep  8.74
+ *   on-accent  on danger  6.27 · danger-deep  8.74   ← text on any danger fill (on-danger)
+ *   ground     on danger  5.80 · danger-deep  8.09   (savor's text-ground convention also passes)
  *   on-person  on person-0…7: 5.23 (person-2) to 11.91 (person-6)
  *   rule-strong (control borders, non-text) on ground 3.70 · ground-deep 3.29 · raised 4.00 (≥ 3:1, WCAG 1.4.11)
  *   rule (decorative hairlines only) — never text, never the only boundary of a control.

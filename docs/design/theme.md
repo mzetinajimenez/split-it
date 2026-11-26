@@ -74,6 +74,8 @@ opacity modifier, compute the alpha-composited colour first.
 | `on-accent` | `danger` | 6.27 | 4.5 | danger button |
 | `on-accent` | `danger-deep` | 8.74 | 4.5 | danger pressed / hover |
 | `ground` | `ink` | 15.41 | 4.5 | "+k" overflow avatar |
+| `ground` | `danger` | 5.80 | 4.5 | savor-style text-ground on a destructive fill |
+| `ground` | `danger-deep` | 8.09 | 4.5 | ConfirmBox destructive confirm (#5) |
 | `on-person` | `person-0` | 10.35 | 4.5 | avatar initials |
 | `on-person` | `person-1` | 7.92 | 4.5 | avatar initials |
 | `on-person` | `person-2` | 5.23 | 4.5 | avatar initials |
@@ -89,6 +91,10 @@ opacity modifier, compute the alpha-composited colour first.
 
 `rule` (`#DDD5C4`) is decorative: 1.29:1 on ground, 1.40:1 on raised. It is never text and never the only edge
 of a control.
+
+**Text on a danger fill:** there is no separate `on-danger` token. `on-accent` is the
+text token for every solid action fill, `accent` and `danger` alike (this is what `Button
+variant="danger"` uses). savor's `text-ground` on `danger-deep` also clears AA (8.09:1).
 
 ## Person colours and colour-vision deficiency
 

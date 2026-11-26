@@ -218,6 +218,8 @@ const PAIRS: [string, string, number][] = [
   ["on-accent", "danger", 4.5],
   ["on-accent", "danger-deep", 4.5],
   ["ground", "ink", 4.5], // the "+k" overflow avatar
+  ["ground", "danger", 4.5], // savor's convention on destructive fills (ConfirmBox, #5)
+  ["ground", "danger-deep", 4.5],
   ...PERSONS.map((p): [string, string, number] => ["on-person", p, 4.5]),
   // Control boundaries (input, stepper, secondary button, chip borders) and the focus ring.
   ["rule-strong", "ground", 3],
