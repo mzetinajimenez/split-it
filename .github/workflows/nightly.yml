@@ -1,0 +1,70 @@
+# Nightly randomized property tests (#6). Not a required check, but alerting: a failure opens
+# an issue carrying the seed, so it can be reproduced locally with
+#   PROPERTY_SEED=<seed> npm test
+#
+# Contract for property tests (allocate, computeSplit, the share round trip): read the seed
+# from process.env.PROPERTY_SEED, fall back to their fixed default seed when it is unset, and
+# include the seed in failure messages. Every other test ignores the variable.
+name: Nightly property tests
+
+on:
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "PROPERTY_SEED to use (blank = random)"
+        required: false
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  property:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      seed: ${{ steps.seed.outputs.seed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - id: seed
+        env:
+          INPUT_SEED: ${{ inputs.seed }}
+        run: |
+          if [ -n "$INPUT_SEED" ]; then seed="$INPUT_SEED"; else seed=$(( (RANDOM << 15) | RANDOM )); fi
+          case "$seed" in (*[!0-9]*|'') echo "::error::seed must be a non-negative integer"; exit 1;; esac
+          echo "seed=$seed" >> "$GITHUB_OUTPUT"
+          echo "PROPERTY_SEED=$seed"
+      - name: Property tests (PROPERTY_SEED=${{ steps.seed.outputs.seed }})
+        env:
+          PROPERTY_SEED: ${{ steps.seed.outputs.seed }}
+        run: npm test
+
+  report:
+    needs: property
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SEED: ${{ needs.property.outputs.seed }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          body=$(printf 'The nightly randomized property tests failed.\n\n- Seed: `%s`\n- Run: %s\n\nReproduce locally:\n\n```bash\nPROPERTY_SEED=%s npm test\n```\n' "$SEED" "$RUN_URL" "$SEED")
+          gh issue create --repo "$REPO" --title "Nightly property tests failed (PROPERTY_SEED=$SEED)" --body "$body"
