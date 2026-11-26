@@ -3,12 +3,11 @@
 import { useState } from "react";
 import Sheet from "@/app/components/Sheet";
 import { ConfirmBox } from "@/app/components/ConfirmBox";
-import { Toaster, toast } from "@/app/components/Toast";
-import { useSheetParam, useStripSheetParamOnLoad } from "@/lib/useSheetParam";
+import { toast } from "@/app/components/Toast";
+import { useSheetParam } from "@/lib/useSheetParam";
 
 export default function SheetHarness() {
-  // In the app this lives in AppInit (#11); the harness has no AppInit yet, so it calls it here.
-  useStripSheetParamOnLoad();
+  // The root layout's AppInit strips ?sheet= on cold load and mounts the Toaster.
   const { open, openSheet, closeSheet } = useSheetParam("demo");
   const [confirming, setConfirming] = useState(false);
 
@@ -51,7 +50,6 @@ export default function SheetHarness() {
           )}
         </Sheet>
       )}
-      <Toaster />
     </main>
   );
 }
