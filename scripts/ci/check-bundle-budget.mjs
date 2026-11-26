@@ -20,7 +20,9 @@ import { join, resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 
 const KB = 1000;
-export const DEFAULT_BUDGET = 150 * KB; // gzip bytes of first-load JS per route
+// 200 kB (owner decision on #6): the framework alone (Next 16 + React 19) is ~145 kB, so
+// the ≤10 kB growth-over-main rule below is the main guard against regressions.
+export const DEFAULT_BUDGET = 200 * KB; // gzip bytes of first-load JS per route
 export const MAX_GROWTH = 10 * KB; // gzip bytes over main before `bundle-approved` is needed
 // Per-route overrides, keyed by route as Next reports it (e.g. "/bills/[id]/split").
 export const ROUTE_BUDGETS = {};
