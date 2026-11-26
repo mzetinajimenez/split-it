@@ -2,13 +2,10 @@
 
 import { useEffect, useState } from "react";
 import PasteReceiptSheet from "@/app/components/receipt/PasteReceiptSheet";
-import { Toaster } from "@/app/components/Toast";
 import { Money } from "@/app/components/ui";
 import { initDb, useBill } from "@/lib/hooks";
-import { useStripSheetParamOnLoad } from "@/lib/useSheetParam";
 
 export default function PasteHarness() {
-  useStripSheetParamOnLoad();
   const [id, setId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,7 +29,6 @@ export default function PasteHarness() {
     <main className="p-4">
       <h1 className="font-display text-2xl text-ink">Receipt harness</h1>
       {id ? <Bill id={id} /> : null}
-      <Toaster />
     </main>
   );
 }
