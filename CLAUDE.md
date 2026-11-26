@@ -20,17 +20,34 @@ npm run build      # production build
 npm run test:e2e   # Playwright against the production build on :3100 (mobile + desktop)
 ```
 
-## Workflow
+## Workflow rules
 
-- **Trunk-style, conventional commits** (`feat:`, `fix:`, `chore:`, `docs:`, `test:`,
-  `refactor:`). Small PRs against `main`.
-- **Green before every commit:** `npm run lint && npm run typecheck && npm test && npm run
-  build && npm run test:e2e`. Never skip, disable or weaken a test to get green.
-- **Ask before adding a dependency.** The pinned set is: `next@16.2`, `react@19.2`,
-  `react-dom`, `dexie`, `dexie-react-hooks`, `zod@4`; dev: `typescript`, `@types/*`,
-  `tailwindcss@4`, `@tailwindcss/postcss`, `eslint@9`, `eslint-config-next`, `vitest@4`,
-  `fake-indexeddb`, `@playwright/test`.
-- Touch only the files your issue owns, plus the plan's pre-agreed shared touch points.
+- **One branch and one PR per issue.** Work happens on `issue-<n>-<slug>` branches cut from
+  `main`, with small PRs against `main`; the swarm coordinator merges (workers never merge,
+  push to `main` or force-push). Conventional-commit messages (`feat:`, `fix:`, `docs:`,
+  `chore:`, `test:`, `refactor:`), in logical chunks. Stage explicit paths — never
+  `git add -A`. Touch only the files your issue owns, plus the plan's pre-agreed shared
+  touch points.
+- **Green before every commit.** `npm run lint && npm run typecheck && npm test && npm run
+  build && npm run test:e2e` must all pass. Never skip, disable or weaken a test to get
+  green. The e2e suite builds and serves a production bundle across two viewport projects,
+  so it is slower than the rest — run it before pushing, not on every save.
+- **Ask before adding dependencies.** The dependency set is deliberately tiny: `dexie`,
+  `dexie-react-hooks`, `next`, `react`, `react-dom`, `zod`; dev: `typescript`, `@types/*`,
+  `tailwindcss`, `@tailwindcss/postcss`, `eslint`, `eslint-config-next`, `vitest`,
+  `fake-indexeddb`, `@playwright/test` (versions in `package.json`). Do not add an npm
+  package without asking first — prefer a built-in or a few lines of local code (the PWA
+  icons, for example, are generated with Node's built-in `zlib`; the property tests use a
+  hand-rolled PRNG). A PR that adds a dependency needs the owner's `deps-approved` label.
+- **IndexedDB migrations are additive-only, NEVER destructive.** The Dexie schema is
+  versioned in `lib/db.ts`. A schema change adds a **new** `db.version(N)` block (and bumps
+  `SCHEMA_VERSION`); it never edits the existing `version(1)` block, drops a table, or
+  removes an index. Users' data lives in their browser — a destructive migration silently
+  eats it. Bills are deleted by tombstone (`deletedAt`), never by row removal.
+- **Any "clear all data" path clears and re-seeds `meta` + `settings` together.**
+  `ensureSeeded` keys "first run" off the singleton `meta` row and creates the default
+  `settings` row with it; deleting data without deleting `meta` leaves the app un-seedable,
+  and deleting `meta` without re-seeding leaves it settings-less (spec §4, §8 Settings).
 
 ## Stack
 
@@ -49,11 +66,14 @@ npm run test:e2e   # Playwright against the production build on :3100 (mobile + 
 
 ### Data flow
 
-- **Read through hooks, write through repo.** Components never import Dexie or `@/lib/db`;
-  they read via `lib/hooks.ts` and write via `lib/repo.ts`.
-- **Migrations are additive only.** Never rewrite or drop existing data in a schema bump.
+- **Read through hooks, write through repo.** UI uses `use*` hooks from `lib/hooks.ts` to
+  read and `lib/repo.ts` functions to write. Never import Dexie (or `@/lib/db`) in a
+  component.
 - Splits are **derived at render** (`computeSplit(bill)`) and never stored.
-- `lib/` is **framework-free**: no React, no Next imports outside `lib/hooks.ts`.
+- **Framework-free `lib/`.** Keep `lib/` (money, split, parse, share, backup, and the query
+  functions in `lib/hooks.ts`) free of React/DOM so it stays unit-testable with
+  fake-indexeddb. New data/logic gets a Vitest test alongside it. Components get no jsdom
+  tests; Playwright covers the browser layer.
 
 ### Money (split-it specific)
 
@@ -66,15 +86,71 @@ npm run test:e2e   # Playwright against the production build on :3100 (mobile + 
   "split the rest".
 - **Parsed and scanned items are never committed without review** (`DraftReview`).
 
+### Theme
+
+- **split-it tokens only.** Colors, fonts, and radii come from the `@theme` tokens in
+  `app/globals.css`, using the semantic names fixed in spec §8: `ground`, `ground-deep`,
+  `raised`, `rule`, `rule-strong`, `ink`, `ink-muted`, `accent`, `accent-deep`,
+  `on-accent`, `attention`, `danger`, `danger-deep`, `person-0`…`person-7`, `on-person`,
+  `font-display`, `font-body`, `font-mono`. *(Palette values pending #4.)* No raw hex or
+  off-palette Tailwind colors in components — a ported `theme-contract.test.ts` enforces
+  this and fails the build if a raw hex or an unknown token appears in `app/`.
+- **Accent is yes, danger is careful.** `accent` means primary action and active state.
+  `danger` means destructive and error, and **nothing else**. **Unclaimed is `attention`,
+  not `danger`** — an unclaimed item needs action, it isn't an error.
+- **Contrast is a property of the pair, not the token.** A token that is text-legal on one
+  surface can fail AA on another; with an opacity modifier, compute the alpha-composited
+  ratio. Never pair a token with a surface without checking.
+- **Text on an accent fill is `on-accent`, never `text-white`**; text on a person colour is
+  `on-person`. Money values use `font-mono` tabular figures.
+
 ### UI
 
-- `Sheet` + `useModalA11y` for every overlay.
-- Sheet state lives in `?sheet=<name>`: never `useState`, never an entity id in the query.
-- `ConfirmBox` for destructive confirms.
-- A toast on every failed write.
-- Touch targets ≥ 44px. Use `md:hover:` only (no bare `hover:`, which sticks on touch).
-- Use theme tokens only; no raw colours.
-- **Unclaimed is `attention`, not `danger`.**
+- **Overlays use `Sheet` + `useModalA11y`.** Any modal/sheet renders inside
+  `app/components/Sheet.tsx` (which wires `useModalA11y` for focus trap, Escape, and body
+  scroll-lock). Sheets mount/unmount rather than toggling an `open` prop.
+- **Sheet open/closed state lives in `?sheet=<name>`, never in `useState`.** A sheet mounts
+  when the param is present, so the Android back gesture and the browser Back button close
+  it with no popstate listener of our own. Open with the **patched global**
+  `window.history.pushState` (never a captured reference, never before mount — an entry
+  missing Next's `__NA` marker causes a full page reload on Back). `useSheetParam` tracks
+  per instance, in a ref, whether *it* was the one that pushed: if so, close with
+  `window.history.back()`, so the entry is consumed and the stack stays balanced; if the
+  param arrived on the URL some other way (cold load before the strip runs, a client-side
+  nav that lands with `?sheet=` already set), close by `router.replace`-ing the param-free
+  URL instead, so closing never traverses an entry this instance didn't push. The param is
+  ephemeral and stripped once on cold load via `router.replace` (not
+  `window.history.replaceState`, which is invisible to `useSearchParams()` and would leave
+  a sheet host believing it's still open). **Never put an entity id in the query** — the
+  owning route already carries it in the path (e.g. `/bills/[id]/split?sheet=split-item`); a
+  second id (which item or person a sheet is for, a prefill payload) stays in local state.
+  Any component calling `useSheetParam` must sit inside a `<Suspense>` boundary or
+  `next build` fails. A delete-then-navigate path never calls `closeSheet()`:
+  `history.back()` queues a traversal that resolves against the history index at the time
+  the queue drains, not when it was called, so a synchronous `router.replace` right after
+  it would land first and the deferred `back()` would then resolve against the
+  post-navigation index — landing on `?sheet=…` for an entity that no longer exists.
+  Navigate with `router.replace` (not `push`, which would stack a new entry instead of
+  consuming the `?sheet=` one) and let the sheet unmount with the route.
+- **Desktop (≥`md`) gets a left nav rail, not a wider phone layout.** `BottomNav`
+  (`md:hidden`) and `NavRail` (`hidden md:flex`) under `app/components/nav/` share one tab
+  list so the two surfaces can't list a different set of tabs (#11). Content is padded
+  past the rail and constrained to a reading column, set once in the root layout, not
+  per-route. Sheets stay centered modals at ≥`sm`, unchanged by the rail.
+- **Hover states are `md:hover:`, never bare `hover:`.** Gated to `md` so a touch tap (which
+  fires `:hover` on many mobile browsers with no way to un-hover) never gets stuck showing
+  a hover treatment meant for a mouse. Each control's hover class reuses a token already in
+  the app's press/hover vocabulary — typically the same token as the element's own
+  `active:` variant.
+- **Destructive confirms use `ConfirmBox`.** Inline `role="alertdialog"` with a focus move —
+  not a stacked sheet, and not a bare `danger` div.
+- **Toast on failed writes.** Wrap repo writes in the UI and `toast(...)` on rejection so a
+  failed save is never silent.
+- **Mobile-first, ≥44px touch targets.** Safe-area insets on fixed chrome, `h-dvh`
+  overlays, `active:` press states, and a minimum 44px hit area on interactive controls
+  (tap area can exceed the visual size). Text-entry inputs are ≥16px (`text-base`) so iOS
+  doesn't focus-zoom (`inputMode="decimal"` for money); pinch-zoom is intentionally left
+  enabled (WCAG 1.4.4).
 - **The long-press split peek is an accelerator.** The chevron to `ItemSplitSheet` is the
   canonical, accessible path.
 
