@@ -1,9 +1,10 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { useDbInit } from "@/lib/hooks";
 import { useStripSheetParamOnLoad } from "@/lib/useSheetParam";
 
-// Mounts once in the root layout and renders nothing. #12 adds the `useDbInit()` call here.
+// Mounts once in the root layout and renders nothing. It seeds the DB on first run.
 
 // The strip must go through Next's PATCHED history.replaceState, which Next installs in an
 // effect of the app router, a *parent* of the layout. Effects run children-first, so an effect
@@ -18,6 +19,7 @@ function StripSheetParam() {
 const noopSubscribe = () => () => {};
 
 export function AppInit() {
+  useDbInit();
   // false during SSR and hydration, true on the commit after.
   const ready = useSyncExternalStore(noopSubscribe, () => true, () => false);
   return ready ? <StripSheetParam /> : null;
