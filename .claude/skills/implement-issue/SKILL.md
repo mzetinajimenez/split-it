@@ -21,6 +21,12 @@ never merge**.
 
 ## 2. Work on your branch
 
+**Usage limits and expiry:** follow `.claude/skills/usage-guard/SKILL.md`.
+- **Checkpoint-push** after every meaningful step.
+- Keep a `## Progress` note in an early draft PR.
+- On a limit: stop, push, and wait for the coordinator.
+- On resume: continue from your branch; never restart from scratch.
+
 - Work on the branch this session was given (normally `issue-<n>-<slug>`, from `main`).
 - Touch **only** the files the issue lists as owned, plus the pre-agreed shared touch points
   that name this issue. If you genuinely need to edit another file, say why in the PR body.

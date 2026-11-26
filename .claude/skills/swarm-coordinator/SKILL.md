@@ -25,8 +25,8 @@ message. Don't start any workers until they reply.
 |---|---|
 | Repo | `mzetinajimenez/split-it` |
 | Max concurrent workers | **5** |
-| Auto-merge (CI green + your review passes, no owner approval) | **logic/data issues only:** #3, #8, #9, #10, #12, #13, and #6 once it's green |
-| Needs owner approval before merge | **every UI issue**, plus #2 (scaffold) and anything that adds a dependency |
+| Merge authority | **Gated on robust CI.** You may merge on your own **if and only if the #6 CI gate is live**. Live means #6 is merged, and branch protection on `main` requires every check #6 lists (lint, typecheck, unit+coverage, build, bundle, e2e, deps-guard, pr-title, codeql) and requires branches to be up to date. **Verify this yourself** by reading the branch protection / rulesets through the API, not from a comment. Until then, **every** merge, including #2 and #6 themselves, needs the owner's explicit approval in this session. |
+| Always needs owner approval | any PR that adds a dependency (it needs the owner-applied `deps-approved` label anyway); the #4 palette; any PR you flagged in review |
 | Merge method | squash, with the PR title as a conventional commit |
 | Planning branch | if `docs/superpowers/` isn't on `main` yet, ask the owner to merge `claude/optimistic-knuth-jvilij` (or to let you merge it) |
 | Worker model | inherit this session's model |
@@ -70,7 +70,9 @@ it:
 ## 3. Watch: one tick every ~20 minutes, or on any child-session event
 
 Schedule ticks with `send_later` (about 20 minutes, a long fallback); child-session events
-also wake you. On each tick:
+also wake you. **Read `.claude/skills/usage-guard/SKILL.md` once at startup.** At the start
+of every tick, check its usage signals first. If you're limited, follow its pause/resume
+procedure instead of the steps below. On each tick:
 
 1. **Workers:** `list_sessions` (with `children: true`, or filtered by the `split-it-swarm`
    tag) and `get_session` for each.
@@ -90,11 +92,15 @@ also wake you. On each tick:
      aren't in the plan's *pre-agreed shared touch points* table, tell the worker to revert
      them or justify them in the PR. Escalate if it's a real cross-issue need.
 3. **Ready to merge** means all of these:
-   - CI fully green (once #6 exists; before that, the worker's PR body must show local
-     lint, typecheck, test, build and e2e passing)
+   - **every required check is green on the PR's latest commit**, and the branch is up to
+     date with `main`
    - mergeable
    - your review passes (§4)
-   - the owner approved, if §0 requires approval for this issue
+   - either the **CI gate is live** (§0, which you re-verify each tick, because protection can
+     change) **or** the owner explicitly approved this PR. Always the owner, for the §0
+     always-approve list.
+   - If the gate stops being live (a check removed, protection loosened), stop merging on
+     your own immediately and tell the owner.
    - Then: merge with `merge_pull_request` (squash) → confirm the issue closed (the PR body
      has `Closes #n`) → archive the worker session → update the #1 status → start newly
      ready issues.
