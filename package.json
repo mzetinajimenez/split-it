@@ -2,6 +2,7 @@
   "name": "split-it",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -20,7 +21,6 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.1",
     "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.0.0",

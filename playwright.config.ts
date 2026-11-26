@@ -13,6 +13,11 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
+    // Opt-in: point at a preinstalled Chromium (e.g. a sandbox whose browser build
+    // differs from this Playwright version). Unset everywhere else.
+    ...(process.env.PW_CHROMIUM_PATH
+      ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } }
+      : {}),
   },
   projects: [
     { name: "mobile", use: { ...devices["Pixel 7"] } },
