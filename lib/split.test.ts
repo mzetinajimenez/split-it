@@ -440,7 +440,7 @@ describe("previewItemSplit", () => {
 });
 
 describe("stability (§5.5)", () => {
-  it("claiming an unclaimed item can move someone else's proportional amount by at most 1¢ (leftover penny)", () => {
+  it("with no payer, claiming an unclaimed item can move someone else's proportional amount by ≤ 1¢", () => {
     // Three 1¢ items: A has i0, B has i1, i2 is unclaimed; a 1¢ proportional tip.
     // Before: weights [1, 1, 1 (unclaimed)], all tie, startIndex 3 → A gets the penny.
     // After B claims i2: weights [1, 2, 0] → B has the largest remainder → B gets it.
@@ -454,5 +454,109 @@ describe("stability (§5.5)", () => {
       });
     expect(computeSplit(bill({})).people.map((p) => p.tipCents)).toEqual([1, 0]);
     expect(computeSplit(bill({ B: 1 })).people.map((p) => p.tipCents)).toEqual([0, 1]);
+  });
+});
+
+describe("rounding with a payer (§5.2: the payer absorbs rounding)", () => {
+  const D = makePerson("D");
+
+  it("non-payers get the nearest cent (halves away from zero); the payer takes the rest", () => {
+    // 1¢ over 1:1. No payer, startIndex 1 → largest remainder rotates the penny to B.
+    expect(previewItemSplit(1, { A: 1, B: 1 }, [A, B], 1)).toEqual({ A: 0, B: 1 });
+    // Payer B: A's exact 0.5 rounds away from zero → 1; B gets 1 − 1 = 0.
+    expect(previewItemSplit(1, { A: 1, B: 1 }, [A, B], 1, "B")).toEqual({ A: 1, B: 0 });
+    // A payer id not on the bill counts as no payer.
+    expect(previewItemSplit(1, { A: 1, B: 1 }, [A, B], 1, "ghost")).toEqual({ A: 0, B: 1 });
+  });
+
+  it("$100 three ways with payer C: C absorbs the penny on every item (no rotation)", () => {
+    // 10000/3 = 3333.33 → A and B get 3333 each; C gets 10000 − 6666 = 3334.
+    const items = [0, 1, 2].map((i) => makeItem(`i${i}`, 10000, { A: 1, B: 1, C: 1 }));
+    const s = computeSplit(makeBill({ people: [A, B, C], items, paidBy: "C" }));
+    expect(s.people.map((p) => p.lines.map((l) => l.cents))).toEqual([
+      [3333, 3333, 3333],
+      [3333, 3333, 3333],
+      [3334, 3334, 3334],
+    ]);
+    expect(totals(s)).toEqual([9999, 9999, 10002]);
+  });
+
+  it("an equal fee with payer A: B and C round 166.67 → 167, A gets 500 − 334 = 166", () => {
+    const s = computeSplit(
+      makeBill({
+        people: [A, B, C],
+        items: [makeItem("i0", 0, { A: 1 })],
+        adjustments: [makeAdjustment("f", "fee", amount(500), { split: "equal" })],
+        paidBy: "A",
+      }),
+    );
+    expect(s.people.map((p) => p.feeCents)).toEqual([166, 167, 167]);
+  });
+
+  it("falls back to largest remainder when the payer isn't one of that split's recipients", () => {
+    // Payer D didn't claim the item → the item split is the plain §5.2 rule: 3334 / 3333 / 3333.
+    const s = computeSplit(
+      makeBill({ people: [A, B, C, D], items: [makeItem("i0", 10000, { A: 1, B: 1, C: 1 })], paidBy: "D" }),
+    );
+    expect(s.people.map((p) => p.subtotalCents)).toEqual([3334, 3333, 3333, 0]);
+  });
+
+  it("the unclaimed pseudo-participant is a non-payer recipient (nearest cent)", () => {
+    // Weights [1000 (A, payer), 1000 (B), 1000 (unclaimed)], tax $1.00: B and unclaimed get
+    // round(33.33) = 33 each; A gets 100 − 66 = 34.
+    const s = computeSplit(
+      makeBill({
+        people: [A, B],
+        items: [makeItem("i0", 1000, { A: 1 }), makeItem("i1", 1000, { B: 1 }), makeItem("i2", 1000)],
+        adjustments: [makeAdjustment("t", "tax", amount(100))],
+        paidBy: "A",
+      }),
+    );
+    expect(s.people.map((p) => p.taxCents)).toEqual([34, 33]);
+    expect(s.unclaimed.totalCents).toBe(1033);
+  });
+
+  it("rounds a negative amount (a discount) away from zero too", () => {
+    // −1¢ over 100:100 with payer B: A's exact −0.5 → −1; B gets −1 − (−1) = 0.
+    const s = computeSplit(
+      makeBill({
+        people: [A, B],
+        items: [makeItem("i0", 100, { A: 1 }), makeItem("i1", 100, { B: 1 })],
+        adjustments: [makeAdjustment("d", "discount", amount(1))],
+        paidBy: "B",
+      }),
+    );
+    expect(s.people.map((p) => p.discountCents)).toEqual([-1, 0]);
+  });
+
+  it("the payer's residue can run opposite to the amount's sign (a 1¢ tip → payer −1¢)", () => {
+    // Weights [1 (A), 0 (C, payer, no items), 1 (unclaimed)], tip 1¢: A and unclaimed each
+    // round 0.5 → 1, so C gets 1 − 2 = −1. The rule keeps Σ exact; the payer absorbs it.
+    const s = computeSplit(
+      makeBill({
+        people: [A, C],
+        items: [makeItem("i0", 1, { A: 1 }), makeItem("i1", 1)],
+        adjustments: [makeAdjustment("p", "tip", amount(1))],
+        paidBy: "C",
+      }),
+    );
+    expect(s.people.map((p) => p.tipCents)).toEqual([1, -1]);
+    expect(s.unclaimed.totalCents).toBe(2);
+    expect(reconciles(s)).toBe(true);
+  });
+
+  it("with a payer, the stability counterexample no longer moves anyone else", () => {
+    // Same bill as the §5.5 counterexample, plus payer C (no items). Tip 1¢, weights
+    // [1 (A), 1 (B), 0 (C), 1 (unclaimed)]: A, B and unclaimed round 1/3 → 0, C gets 1.
+    // B claims i2 → weights [1, 2, 0, 0]: A still round(1/3) = 0, B round(2/3) = 1, C gets 0.
+    const bill = (claims: Record<string, number>) =>
+      makeBill({
+        people: [A, B, C],
+        items: [makeItem("i0", 1, { A: 1 }), makeItem("i1", 1, { B: 1 }), makeItem("i2", 1, claims)],
+        adjustments: [makeAdjustment("p", "tip", amount(1))],
+        paidBy: "C",
+      });
+    expect(computeSplit(bill({})).people.map((p) => p.tipCents)).toEqual([0, 0, 1]);
+    expect(computeSplit(bill({ B: 1 })).people.map((p) => p.tipCents)).toEqual([0, 1, 0]);
   });
 });

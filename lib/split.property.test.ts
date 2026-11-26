@@ -3,6 +3,7 @@
 // failure names the seed, so `PROPERTY_SEED=<n> npm test` reproduces it.
 
 import { describe, expect, it } from "vitest";
+import { allocate } from "./money";
 import { computeSplit, previewItemSplit } from "./split";
 import { mulberry32, propertySeed, randInt, randomBill } from "./testing/billFactory";
 import type { Adjustment, Bill, PersonResult, SplitResult } from "./types";
@@ -77,7 +78,8 @@ describe("computeSplit properties (seeded, mulberry32)", () => {
         }
         expect(p.subtotalCents).toBe(sum(p.lines.map((l) => l.cents)));
         expect(p.totalCents).toBe(p.subtotalCents + p.discountCents + p.taxCents + p.feeCents + p.tipCents);
-        expect(p.discountCents).toBeLessThanOrEqual(0);
+        // The payer's rounding residue can run against the sign (spec §5.2), so only others.
+        if (p.personId !== bill.paidBy) expect(p.discountCents).toBeLessThanOrEqual(0);
       }
       for (const v of [s.grandTotalCents, s.itemsSubtotalCents, s.unclaimed.itemsCents, s.unclaimed.totalCents]) {
         expect(Number.isSafeInteger(v)).toBe(true);
@@ -101,7 +103,7 @@ describe("computeSplit properties (seeded, mulberry32)", () => {
     });
   });
 
-  property("item lines are within 1¢ of the exact rational share; unclaimed items go to no one", 5, (rand) => {
+  property("item lines are within 1¢ of the exact share (the payer: ½¢ per other claimant); unclaimed go to no one", 5, (rand) => {
     forBills(rand, (bill, s) => {
       const known = new Set(bill.people.map((p) => p.id));
       bill.items.forEach((item) => {
@@ -109,10 +111,19 @@ describe("computeSplit properties (seeded, mulberry32)", () => {
         expect(s.unclaimed.itemIds.includes(item.id)).toBe(!claimed);
         const lines = s.people.flatMap((p) => p.lines.filter((l) => l.itemId === item.id));
         expect(sum(lines.map((l) => l.cents))).toBe(claimed ? item.priceCents : 0);
-        for (const l of lines) {
+        const payerLine = s.people.find((p) => p.personId === bill.paidBy)?.lines.find((l) => l.itemId === item.id);
+        for (const p of s.people) {
+          const l = p.lines.find((x) => x.itemId === item.id);
+          if (!l) continue;
           // |cents − price·shares/total| < 1  ⇔  |cents·total − price·shares| < total
-          const diff = BigInt(l.cents) * BigInt(l.totalShares) - BigInt(item.priceCents) * BigInt(l.shares);
-          expect(abs(diff) < BigInt(l.totalShares)).toBe(true);
+          const diff = abs(BigInt(l.cents) * BigInt(l.totalShares) - BigInt(item.priceCents) * BigInt(l.shares));
+          if (payerLine && p.personId === bill.paidBy) {
+            // The payer absorbs each other claimant's ≤ ½¢ rounding.
+            expect(2n * diff <= BigInt(lines.length - 1) * BigInt(l.totalShares)).toBe(true);
+          } else {
+            expect(diff < BigInt(l.totalShares)).toBe(true);
+            if (payerLine) expect(2n * diff <= BigInt(l.totalShares)).toBe(true); // nearest cent
+          }
         }
       });
       expect(s.unclaimed.itemsCents).toBe(
@@ -121,7 +132,7 @@ describe("computeSplit properties (seeded, mulberry32)", () => {
     });
   });
 
-  property("each person's adjustment parts are within 1¢ per adjustment of the exact rational share", 6, (rand) => {
+  property("adjustment parts are within 1¢ per adjustment of the exact share (the payer: ½¢ per other recipient)", 6, (rand) => {
     forBills(rand, (bill, s) => {
       const n = bill.people.length;
       if (n === 0) {
@@ -155,7 +166,12 @@ describe("computeSplit properties (seeded, mulberry32)", () => {
         const { num, count } = exact(kind);
         s.people.forEach((p, i) => {
           const diff = BigInt(p[COMPONENT[kind]]) * den - num[i];
-          expect(abs(diff) < BigInt(Math.max(count, 1)) * den || (count === 0 && diff === 0n)).toBe(true);
+          if (p.personId === bill.paidBy) {
+            // At most n other recipients (n − 1 people + unclaimed), each ≤ ½¢ off.
+            expect(2n * abs(diff) <= BigInt(count * n) * den).toBe(true);
+          } else {
+            expect(abs(diff) < BigInt(Math.max(count, 1)) * den || (count === 0 && diff === 0n)).toBe(true);
+          }
           if (count === 0) expect(p[COMPONENT[kind]]).toBe(0);
         });
         unclaimedAdjustments += count;
@@ -191,13 +207,14 @@ describe("computeSplit properties (seeded, mulberry32)", () => {
         for (const p of s.people) {
           for (const l of p.lines) if (l.itemId === item.id) fromSplit[p.personId] = l.cents;
         }
-        expect(previewItemSplit(item.priceCents, item.claims, bill.people, itemIndex)).toEqual(fromSplit);
+        expect(previewItemSplit(item.priceCents, item.claims, bill.people, itemIndex, bill.paidBy)).toEqual(fromSplit);
       });
     });
   });
 
-  property("claiming an unclaimed item only moves the claimant and unclaimed (others: ≤ 1¢ per proportional adjustment)", 10, (rand) => {
+  property("claiming an unclaimed item: with a payer, only the claimant, payer and unclaimed move; without, others ≤ 1¢ per proportional adjustment", 10, (rand) => {
     let exercised = 0;
+    let withPayer = 0;
     forBills(rand, (bill, before, r) => {
       if (bill.people.length === 0 || before.unclaimed.itemIds.length === 0) return;
       exercised++;
@@ -222,10 +239,18 @@ describe("computeSplit properties (seeded, mulberry32)", () => {
           ? 0 // proportional falls back to equal, which doesn't depend on claims at all
           : before.adjustments.filter((a) => a.kind === kind && mode.get(a.id) !== "equal").length;
 
+      const payer = bill.paidBy;
+      if (payer !== null) withPayer++;
       before.people.forEach((was, i) => {
         if (i === k) return;
         const now = after.people[i];
-        // Items and subtotals: exactly unchanged.
+        if (was.personId === payer) return; // the payer absorbs rounding: may move
+        if (payer !== null) {
+          // Payer rule: everyone else's share is round(c·w/S) of their own unchanged weight.
+          expect(now).toEqual(was);
+          return;
+        }
+        // No payer. Items and subtotals: exactly unchanged.
         expect(now.lines).toEqual(was.lines);
         expect(now.subtotalCents).toBe(was.subtotalCents);
         expect(now.owesTo).toBe(was.owesTo);
@@ -239,5 +264,83 @@ describe("computeSplit properties (seeded, mulberry32)", () => {
       });
     });
     expect(exercised).toBeGreaterThan(BILLS / 10);
+    expect(withPayer).toBeGreaterThan(BILLS / 20);
+  });
+
+  property("matches an independent reference: nearest-cent + payer remainder with a payer, else allocate()", 11, (rand) => {
+    forBills(rand, (bill, s) => {
+      const ref = reference(bill, s.adjustments);
+      expect(s.people.map((p) => [p.lines.map((l) => l.cents), p.discountCents, p.taxCents, p.feeCents, p.tipCents])).toEqual(
+        ref.people,
+      );
+      expect(s.unclaimed.totalCents).toBe(ref.unclaimedTotal);
+    });
   });
 });
+
+/**
+ * A second, independent statement of §5.3/§5.5 for property 11. With the payer among a
+ * split's recipients, non-payers get round(c·w/W) (halves away from zero, in BigInt) and the
+ * payer the rest; otherwise the plain `allocate` call. The resolved adjustments come in
+ * (resolution is covered by property 4 and the worked examples).
+ */
+function reference(bill: Bill, adjustments: SplitResult["adjustments"]) {
+  const people = bill.people;
+  const payer = people.some((p) => p.id === bill.paidBy) ? bill.paidBy : null;
+  const split = (amount: number, weights: number[], ids: (string | null)[], start: number): number[] => {
+    const pi = payer === null ? -1 : ids.indexOf(payer);
+    if (pi < 0) return allocate(amount, weights, start);
+    const W = BigInt(sum(weights));
+    if (W === 0n) return weights.map(() => 0);
+    const a = BigInt(amount < 0 ? -amount : amount);
+    const out = weights.map((w, i) => {
+      if (i === pi) return 0n;
+      const q = (a * BigInt(w)) / W;
+      return 2n * ((a * BigInt(w)) % W) >= W ? q + 1n : q;
+    });
+    out[pi] = a - out.reduce((x, y) => x + y, 0n);
+    return out.map((x) => (amount < 0 ? Number(-x) : Number(x)) + 0); // + 0 turns −0 into 0
+  };
+
+  const lines = people.map(() => [] as number[]);
+  const subtotals = people.map(() => 0);
+  let unclaimedItems = 0;
+  bill.items.forEach((item, idx) => {
+    const who = people.map((p, i) => [i, item.claims[p.id] ?? 0] as const).filter(([, sh]) => sh > 0);
+    if (who.length === 0) {
+      unclaimedItems += item.priceCents;
+      return;
+    }
+    const cents = split(item.priceCents, who.map(([, sh]) => sh), who.map(([i]) => people[i].id), idx);
+    who.forEach(([i], j) => {
+      lines[i].push(cents[j]);
+      subtotals[i] += cents[j];
+    });
+  });
+
+  const parts = people.map(() => ({ discount: 0, tax: 0, fee: 0, tip: 0 }));
+  let unclaimedTotal = unclaimedItems;
+  const mode = new Map(bill.adjustments.map((a) => [a.id, a.split]));
+  const S = sum(subtotals) + unclaimedItems;
+  adjustments.forEach((adj, j) => {
+    if (people.length === 0) {
+      unclaimedTotal += adj.cents;
+      return;
+    }
+    const start = bill.items.length + j;
+    const ids = people.map((p) => p.id);
+    if (mode.get(adj.id) !== "equal" && S > 0) {
+      const cents = split(adj.cents, [...subtotals, unclaimedItems], [...ids, null], start);
+      people.forEach((_, i) => (parts[i][adj.kind] += cents[i]));
+      unclaimedTotal += cents[people.length];
+    } else {
+      const cents = split(adj.cents, people.map(() => 1), ids, start);
+      people.forEach((_, i) => (parts[i][adj.kind] += cents[i]));
+    }
+  });
+
+  return {
+    people: people.map((_, i) => [lines[i], parts[i].discount, parts[i].tax, parts[i].fee, parts[i].tip]),
+    unclaimedTotal,
+  };
+}

@@ -24,9 +24,9 @@ function sum(xs: readonly number[]): number {
 }
 
 /**
- * Who is sharing one amount: participant ids parallel to the weights (`null` = the
- * "unclaimed" pseudo-participant), and the bill's payer (null when none is set or the id
- * isn't on the bill). `distribute` gets this so a payer-aware rounding rule can drop in.
+ * Who is sharing one amount: the recipients' ids, parallel to the weights (`null` = the
+ * "unclaimed" pseudo-participant, never the payer), and the bill's payer (null when none
+ * is set or the id isn't on the bill).
  */
 interface DistributeContext {
   startIndex: number;
@@ -35,16 +35,42 @@ interface DistributeContext {
 }
 
 /**
- * THE rounding seam: turns one amount into whole cents across weighted participants. Every
- * item split, every adjustment split and `previewItemSplit` goes through this one function,
- * so a different leftover-cent rule replaces only this body.
+ * THE rounding seam: turns one amount into whole cents across weighted recipients. Every
+ * item split, every adjustment split and `previewItemSplit` goes through this one function.
+ * Σ result === amount, always, and it's deterministic.
  *
- * Today it's the pinned spec §5.2 rule: largest remainder, ties rotating from
- * `startIndex` (`allocate`). `ids` and `payerId` aren't used by that rule yet.
- * Contract for any replacement: Σ result === amount, a zero weight gets 0, deterministic.
+ * - **The payer is a recipient** (spec §5.2, "Rounding with a payer"): every other recipient,
+ *   the unclaimed pseudo-participant included, gets their exact share rounded to the
+ *   nearest cent (halves away from zero), and the payer gets the rest. Nobody's amount then
+ *   depends on anyone else's weight except the payer's, so claiming an item moves only the
+ *   claimant, the payer and `unclaimed`.
+ * - **Otherwise** (no payer, or the payer isn't in this split): the pinned largest-remainder
+ *   rule, ties rotating from `startIndex` (`allocate`).
  */
 function distribute(amount: Cents, weights: readonly number[], ctx: DistributeContext): Cents[] {
-  return allocate(amount, [...weights], ctx.startIndex);
+  const payerIndex = ctx.payerId === null ? -1 : ctx.ids.indexOf(ctx.payerId);
+  return payerIndex < 0 ? allocate(amount, [...weights], ctx.startIndex) : payerAbsorbs(amount, weights, payerIndex);
+}
+
+/**
+ * Nearest-cent shares for everyone but `payerIndex`; the payer takes amount − Σ others.
+ * Exact integer arithmetic: round(a·w / W) via remainder, `(x − x mod W) / W`, never a float
+ * quotient. A negative amount splits |amount| and negates (so halves round away from zero
+ * either way). W = 0 → all zeros, like `allocate` (the caller picks the fallback).
+ */
+function payerAbsorbs(amount: Cents, weights: readonly number[], payerIndex: number): Cents[] {
+  const W = sum(weights);
+  if (W === 0 || amount === 0) return weights.map(() => 0);
+  const a = Math.abs(amount);
+  if (!Number.isSafeInteger(a * W)) throw new RangeError(`split: amount × Σ weights exceeds 2^53 (${a} × ${W})`);
+  const shares = weights.map((w, i) => {
+    if (i === payerIndex) return 0;
+    const product = a * w;
+    const rem = product % W;
+    return (product - rem) / W + (rem * 2 >= W ? 1 : 0);
+  });
+  shares[payerIndex] = a - sum(shares);
+  return amount < 0 ? shares.map(negate) : shares;
 }
 
 /**
@@ -62,7 +88,7 @@ function claimantsOf(claims: Record<string, number>, people: readonly Person[]):
   return out;
 }
 
-/** One item's split (spec §5.3): `allocate(price, shares, startIndex = itemIndex)` across claimants. */
+/** One item's split (spec §5.3): `distribute(price, shares, startIndex = itemIndex)` across claimants. */
 function splitItem(
   priceCents: Cents,
   claims: Record<string, number>,
@@ -82,18 +108,20 @@ function splitItem(
  * SAME allocation `computeSplit` runs for item `itemIndex`, so the preview can never disagree
  * with the engine. Keys are the claimants' person ids (people not claiming are absent).
  *
- * The pinned signature carries no payer, so it passes none: that matches `computeSplit`
- * as long as `distribute` ignores the payer (today's rule). A payer-aware rule would need a
- * `paidBy` argument here too.
+ * Pass the bill's `paidBy`: when the payer is one of the claimants, the payer absorbs the
+ * rounding (spec §5.2), exactly as in `computeSplit`. An id not on `people` counts as no
+ * payer. Omitted → no payer (the largest-remainder rule).
  */
 export function previewItemSplit(
   priceCents: Cents,
   claims: Record<string, number>,
   people: Person[],
   itemIndex: number,
+  paidBy: string | null = null,
 ): Record<string, Cents> {
+  const payer = paidBy !== null && people.some((p) => p.id === paidBy) ? paidBy : null;
   const out: Record<string, Cents> = {};
-  for (const line of splitItem(priceCents, claims, people, itemIndex, null)) out[line.personId] = line.cents;
+  for (const line of splitItem(priceCents, claims, people, itemIndex, payer)) out[line.personId] = line.cents;
   return out;
 }
 
@@ -167,6 +195,8 @@ const COMPONENT = {
  *   `unclaimed.totalCents`. If every weight is 0, it falls back to equal.
  * - `equal`: weight 1 for every person on the bill (the pseudo-participant takes no part).
  * - No people: nothing is allocated; everything is unclaimed.
+ *
+ * Rounding: with a payer among a split's recipients, the payer absorbs it (`distribute`).
  *
  * Invariant (property-tested): Σ people.totalCents + unclaimed.totalCents === grandTotalCents.
  */
