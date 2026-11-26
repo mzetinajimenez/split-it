@@ -50,6 +50,12 @@ npm run test:e2e   # Playwright against the production build on :3100 (mobile + 
   `SCHEMA_VERSION`); it never edits the existing `version(1)` block, drops a table, or
   removes an index. Users' data lives in their browser — a destructive migration silently
   eats it. Bills are deleted by tombstone (`deletedAt`), never by row removal.
+- **Backup import migrates forward before the first schema bump.** A backup carries the
+  `schemaVersion` it was written at. Before any `db.version(2)` lands, `lib/backup.ts` must
+  accept every older `schemaVersion` and upgrade its rows to the current shape (in the same
+  additive spirit) before validating them with `lib/schemas.ts`; a newer `schemaVersion`
+  is rejected as "from a newer version". Bumping the schema without that path makes every
+  existing backup unrestorable.
 - **Any "clear all data" path clears and re-seeds `meta` + `settings` together.**
   `ensureSeeded` keys "first run" off the singleton `meta` row and creates the default
   `settings` row with it; deleting data without deleting `meta` leaves the app un-seedable,
@@ -189,6 +195,7 @@ lib/                            # (planned)
   receipt/parse.ts  receipt/fixtures/
   share.ts        # share-link encode/decode
   summaryText.ts  people.ts
+  schemas.ts      # zod field/entity schemas (repo, share decode, backup)
   db.ts           # Dexie schema, ensureSeeded(), SCHEMA_VERSION   (storage seam)
   repo.ts         # THE WRITE PATH                                 (storage seam)
   hooks.ts        # THE READ PATH
@@ -196,5 +203,6 @@ lib/                            # (planned)
   sheetParam.ts  useSheetParam.ts  useModalA11y.ts  sheetDrag.ts
 e2e/
   smoke.spec.ts                 # loads / and sees the heading
+  helpers/seed.ts               # seedBill(page, partial): write a Bill row straight into IndexedDB
 scripts/generate-icons.mjs      # (planned) PWA icons
 ```
