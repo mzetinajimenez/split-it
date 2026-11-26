@@ -10,10 +10,11 @@
 import { useId, useRef, useState } from "react";
 import { useSplit } from "@/lib/hooks";
 import { initials } from "@/lib/people";
+import { BOTTOM_BAR_CLEARANCE } from "@/app/components/nav/tabs";
 import { Avatar, ChevronGlyph, Money } from "@/app/components/ui";
 
-// Same slot as the Toast and the StepNav: #11's BOTTOM_BAR_CLEARANCE replaces this once it lands.
-const DOCK_BOTTOM = "bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-0 md:left-56";
+// Docks in the StepNav's slot (#11); at md the content column starts past the 15rem NavRail.
+const DOCK = `${BOTTOM_BAR_CLEARANCE} md:left-60`;
 const DRAG_THRESHOLD_PX = 24;
 
 export interface TotalsTrayProps {
@@ -58,7 +59,7 @@ export default function TotalsTray({ billId, activePersonId, onSelectPerson }: T
       <section
         aria-label="Totals"
         data-testid="totals-tray"
-        className={`fixed inset-x-0 z-20 border-t border-rule-strong bg-raised ${DOCK_BOTTOM}`}
+        className={`fixed inset-x-0 z-20 border-t border-rule-strong bg-raised ${DOCK}`}
       >
         {expanded && (
           <div
