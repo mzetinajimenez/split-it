@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import TotalsTray from "@/app/components/split/TotalsTray";
 import { Money } from "@/app/components/ui";
 import { useSplit } from "@/lib/hooks";
-import { toggleClaim } from "@/lib/repo";
 
 // Stub Split step: ?bill=<id>. A header with the grand total, one "claim" button per item
 // (assigns it to the active person), and the tray. Stands in for #19's ClaimBoard.
@@ -29,7 +28,12 @@ export default function TotalsTrayHarness() {
             <button
               type="button"
               disabled={!active}
-              onClick={() => active && toggleClaim(bill.id, item.id, active)}
+              onClick={async () => {
+                // Dynamic import keeps the write path (zod) out of this route's first-load JS,
+                // which the CI bundle budget measures.
+                const { toggleClaim } = await import("@/lib/repo");
+                if (active) await toggleClaim(bill.id, item.id, active);
+              }}
               className="min-h-11 w-full rounded-sm border border-rule px-4 text-left text-ink active:bg-ground-deep disabled:opacity-50"
             >
               {item.name} · <Money cents={item.priceCents} currency={bill.currency} />
