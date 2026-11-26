@@ -24,6 +24,33 @@ function mulberry32(seed: number): () => number {
 
 const sum = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
 
+/**
+ * Base seed for every randomized test. Nightly CI sets PROPERTY_SEED to a random integer to
+ * explore new cases; locally and on PRs it falls back to a fixed default, so runs are
+ * reproducible. A failure message names the seed: re-run with `PROPERTY_SEED=<n> npm test`.
+ */
+const DEFAULT_SEED = 20261125;
+const BASE_SEED = (() => {
+  const raw = process.env.PROPERTY_SEED?.trim();
+  const n = raw ? Number(raw) : Number.NaN;
+  return Number.isSafeInteger(n) ? n : DEFAULT_SEED;
+})();
+
+/** A seeded randomized test: each gets its own stream (BASE_SEED + offset), and failures print the seed. */
+function property(name: string, offset: number, body: (rand: () => number, seed: number) => void) {
+  it(name, () => {
+    const seed = (BASE_SEED + offset) >>> 0;
+    try {
+      body(mulberry32(seed), seed);
+    } catch (err) {
+      if (err instanceof Error) {
+        err.message = `${err.message}\n  ↳ seeded property failed: reproduce with PROPERTY_SEED=${BASE_SEED} (stream seed ${seed})`;
+      }
+      throw err;
+    }
+  });
+}
+
 describe("minorDigits", () => {
   it("reads minor-unit digits from Intl", () => {
     expect(minorDigits("USD")).toBe(2);
@@ -86,8 +113,7 @@ describe("parseMoney", () => {
     expect(parseMoney(input, currency)).toBeNull();
   });
 
-  it("never returns a float (randomized)", () => {
-    const rand = mulberry32(7);
+  property("never returns a float (randomized)", 7, (rand) => {
     for (let i = 0; i < 2000; i++) {
       const whole = Math.floor(rand() * 1_000_000);
       const frac = String(Math.floor(rand() * 100)).padStart(2, "0");
@@ -125,14 +151,15 @@ describe("formatMoney", () => {
     expect(() => formatMoney(Number.NaN, "USD")).toThrow(RangeError);
   });
 
-  it.each(["USD", "EUR", "JPY"])("round-trips with parseMoney for %s", (currency) => {
-    const rand = mulberry32(currency.charCodeAt(0));
-    const cases = [0, 1, 9, 10, 99, 100, 101, 1000, 123456, MAX_CENTS];
-    for (let i = 0; i < 1000; i++) cases.push(Math.floor(rand() * (MAX_CENTS + 1)));
-    for (const cents of cases) {
-      expect(parseMoney(formatMoney(cents, currency), currency)).toBe(cents);
-    }
-  });
+  for (const [c, currency] of ["USD", "EUR", "JPY"].entries()) {
+    property(`round-trips with parseMoney for ${currency}`, 100 + c, (rand) => {
+      const cases = [0, 1, 9, 10, 99, 100, 101, 1000, 123456, MAX_CENTS];
+      for (let i = 0; i < 1000; i++) cases.push(Math.floor(rand() * (MAX_CENTS + 1)));
+      for (const cents of cases) {
+        expect(parseMoney(formatMoney(cents, currency), currency)).toBe(cents);
+      }
+    });
+  }
 });
 
 describe("percentOf", () => {
@@ -158,8 +185,7 @@ describe("percentOf", () => {
     expect(() => percentOf(1000, 8.25)).toThrow(RangeError);
   });
 
-  it("matches a BigInt reference (randomized)", () => {
-    const rand = mulberry32(42);
+  property("matches a BigInt reference (randomized)", 42, (rand) => {
     for (let i = 0; i < 2000; i++) {
       const base = Math.floor(rand() * (MAX_CENTS + 1)) * (rand() < 0.2 ? -1 : 1);
       const bps = Math.floor(rand() * 10001);
@@ -248,8 +274,7 @@ describe("allocate", () => {
       return { amount, weights, startIndex };
     }
 
-    it("Σ allocate(a, w) === a (when W > 0)", () => {
-      const rand = mulberry32(1);
+    property("Σ allocate(a, w) === a (when W > 0)", 1, (rand) => {
       for (let i = 0; i < CASES; i++) {
         const { amount, weights, startIndex } = randomCase(rand);
         const result = allocate(amount, weights, startIndex);
@@ -259,8 +284,7 @@ describe("allocate", () => {
       }
     });
 
-    it("|share_i − a·w_i/W| < 1", () => {
-      const rand = mulberry32(2);
+    property("|share_i − a·w_i/W| < 1", 2, (rand) => {
       for (let i = 0; i < CASES; i++) {
         const { amount, weights, startIndex } = randomCase(rand);
         const W = sum(weights);
@@ -274,8 +298,7 @@ describe("allocate", () => {
       }
     });
 
-    it("zero weight → 0", () => {
-      const rand = mulberry32(3);
+    property("zero weight → 0", 3, (rand) => {
       for (let i = 0; i < CASES; i++) {
         const { amount, weights, startIndex } = randomCase(rand);
         const result = allocate(amount, weights, startIndex);
@@ -285,9 +308,8 @@ describe("allocate", () => {
       }
     });
 
-    it("is deterministic", () => {
-      const a = mulberry32(4);
-      const b = mulberry32(4);
+    property("is deterministic", 4, (a, seed) => {
+      const b = mulberry32(seed);
       for (let i = 0; i < CASES; i++) {
         const x = randomCase(a);
         const y = randomCase(b);
@@ -296,8 +318,7 @@ describe("allocate", () => {
       }
     });
 
-    it("spreads equal-split leftovers by rotation (no person gets 2 more than another)", () => {
-      const rand = mulberry32(5);
+    property("spreads equal-split leftovers by rotation (no person gets 2 more than another)", 5, (rand) => {
       for (let i = 0; i < 1000; i++) {
         const n = 2 + Math.floor(rand() * 7);
         const totals = new Array<number>(n).fill(0);
