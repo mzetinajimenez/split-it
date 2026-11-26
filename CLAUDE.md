@@ -119,9 +119,11 @@ npm run test:e2e   # Playwright against the production build on :3100 (mobile + 
   param arrived on the URL some other way (cold load before the strip runs, a client-side
   nav that lands with `?sheet=` already set), close by `router.replace`-ing the param-free
   URL instead, so closing never traverses an entry this instance didn't push. The param is
-  ephemeral and stripped once on cold load via `router.replace` (not
-  `window.history.replaceState`, which is invisible to `useSearchParams()` and would leave
-  a sheet host believing it's still open). **Never put an entity id in the query** — the
+  ephemeral and stripped once on cold load via the **patched global**
+  `window.history.replaceState` (synced into `useSearchParams()` since Next 14.1), **not**
+  `router.replace`: on a statically prerendered page the router's initial URL has no search,
+  so `router.replace` to the bare path is a silent no-op and the sheet stays open (#5;
+  pinned by `e2e/sheet.spec.ts`). **Never put an entity id in the query** — the
   owning route already carries it in the path (e.g. `/bills/[id]/split?sheet=split-item`); a
   second id (which item or person a sheet is for, a prefill payload) stays in local state.
   Any component calling `useSheetParam` must sit inside a `<Suspense>` boundary or

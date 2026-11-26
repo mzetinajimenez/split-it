@@ -52,7 +52,17 @@ export function ConfirmBox({
       // Restore to it only if it's still attached; otherwise fall back to the enclosing
       // dialog panel so focus stays inside the trap. If neither exists (a call site that
       // isn't inside a Sheet), do nothing rather than focus something arbitrary.
-      if (previouslyFocused?.isConnected) {
+      //
+      // <body> counts as "nothing to restore to" (fixed in the port, #5): this effect runs
+      // after the commit, so when the trigger was swapped out in that same commit the browser
+      // has ALREADY dropped focus to <body> by the time previouslyFocused is read. <body> is
+      // connected, so savor's isConnected check alone picked it and the fallback never ran —
+      // exactly the escape-the-trap case above. e2e/sheet.spec.ts pins the fallback.
+      if (
+        previouslyFocused &&
+        previouslyFocused !== document.body &&
+        previouslyFocused.isConnected
+      ) {
         previouslyFocused.focus();
       } else {
         dialogPanel?.focus();

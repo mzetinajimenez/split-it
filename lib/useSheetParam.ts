@@ -67,33 +67,39 @@ export function useSheetParam(name: string) {
  * a shared link must never restore a half-filled form, so the param is stripped once on cold
  * load.
  *
- * This goes through `router.replace(...)` rather than `window.history.replaceState(...)`
- * because `replaceState` is invisible to Next's router: it edits the URL bar without
- * dispatching anything, so `useSearchParams()` — which every `useSheetParam()` call site reads
- * `open` from — keeps reporting the stale `sheet=` value even after the bar shows it gone. A
- * sheet host would then stay mounted (scroll-lock engaged) believing it's open while the URL
- * says otherwise, and its ✕ would call `closeSheet()` -> `history.back()` over an entry that
- * was never pushed, ejecting the user from the page entirely. `router.replace` updates what
- * `useSearchParams()` reports, so every mounted sheet host re-renders closed for real — and,
- * like `replaceState`, it doesn't push a new history entry, so there's still nothing extra to
- * go back to.
+ * This goes through the PATCHED GLOBAL `window.history.replaceState(...)`, NOT
+ * `router.replace(...)`. That is the reverse of savor's rule, and it is deliberate (#5):
  *
- * `useRouter()` (unlike `useSearchParams()`) doesn't require the calling component to sit
- * inside a `<Suspense>` boundary, so `AppInit` — which mounts once in the root layout and is
- * not itself Suspense-wrapped — can call this directly. The effect's empty dependency array is
+ *   - `router.replace` to the param-free URL is a silent no-op on a statically prerendered
+ *     page whenever the result is the bare path (`/bills/x/split?sheet=tip` → `/bills/x/split`).
+ *     The router's initial URL for a prerendered page is the prerendered path, without the
+ *     search, so Next sees "navigate to where I already am" and drops it. The URL keeps
+ *     `?sheet=`, the sheet stays mounted, and its ✕ would `router.replace` the same dead URL.
+ *     It works when another query param survives the strip, and savor had no e2e on this
+ *     path, which is how it went unnoticed. e2e/sheet.spec.ts's cold-load test pins it.
+ *   - savor's reason for avoiding `replaceState` ("invisible to `useSearchParams()`") no longer
+ *     holds: since Next 14.1 the patched `pushState`/`replaceState` sync into the router, which
+ *     is exactly what `openSheet()`'s `pushState` already relies on. Passing `null` state is
+ *     fine for the same reason: the patch copies Next's `__NA` entry state in.
+ *
+ * Either way no new history entry is pushed, so there's nothing extra to go back to. Call the
+ * global at call time, never a captured reference (see lib/sheetParam.ts).
+ *
+ * It reads no search params through React (only `window.location`), so the calling component
+ * needn't sit inside a `<Suspense>` boundary, and `AppInit` — which mounts once in the root
+ * layout and is not itself Suspense-wrapped — can call this directly. The effect's empty dependency array is
  * what keeps this cold-load-only: `AppInit` mounts once per app lifetime and never remounts on
  * client-side navigation, so this never fires for a same-session nav that lands on `?sheet=`
  * on purpose, which must be left alone for that sheet to open.
  */
 export function useStripSheetParamOnLoad() {
-  const router = useRouter();
   useEffect(() => {
     const search = window.location.search;
     if (!new URLSearchParams(search).has(SHEET_PARAM)) return;
-    router.replace(
-      `${window.location.pathname}${withoutSheet(search)}${window.location.hash}`,
-      { scroll: false }
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${withoutSheet(search)}${window.location.hash}`
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
