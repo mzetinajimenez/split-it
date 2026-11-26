@@ -1,0 +1,30 @@
+THE COPPER KETTLE
+Bistro & Bar
+100 Example Avenue
+Springfield, ST 00000
+Tel (555) 010-0199
+
+Server: Alex          Table 14
+Guests: 4
+11/25/26  7:42 PM     Chk 4821
+
+1  Burrata                 14.00
+1  Caesar Salad            12.50
+2  Steak Frites            58.00
+1  Mushroom Risotto        24.00
+1  Grilled Salmon          27.50
+2  Glass House Red         24.00
+1  Sparkling Water          6.00
+1  Chocolate Torte         10.00
+
+   Subtotal               176.00
+   Sales Tax 8.875%        15.62
+   TOTAL                  191.62
+
+   Suggested Gratuity:
+   18%  31.68   20%  35.20   22%  38.72
+
+   Tip _______________
+   Total _____________
+
+Thank you for dining with us!

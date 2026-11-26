@@ -1,0 +1,15 @@
+~~ PIZZERIA  N0VA ~~
+l23 Exarnple Rd
+|  Margherita Pizza ....... 16.50
+| 2 x  Garlic   Knots        9.00
+|Caprese  Salad  .. 11.00 T
+  Tiramisu       7.5O
+| Lemonade                 3.75
+. 4.00
+Calzone
+            14.25
+#  Subtotal ...... 62.00
+TAX ....... 5.12
+T0TAL  67.12
+* * * * * * * * * *
+ARPROVAL # 00O0O0

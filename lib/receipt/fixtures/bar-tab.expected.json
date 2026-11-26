@@ -1,0 +1,125 @@
+{
+  "opts": {},
+  "parsed": {
+    "items": [
+      {
+        "name": "Pint IPA",
+        "quantity": 4,
+        "priceCents": 2800,
+        "line": 6,
+        "confidence": "high"
+      },
+      {
+        "name": "House Margarita",
+        "quantity": 2,
+        "priceCents": 2200,
+        "line": 7,
+        "confidence": "high"
+      },
+      {
+        "name": "Pint IPA",
+        "quantity": 4,
+        "priceCents": 2800,
+        "line": 9,
+        "confidence": "high"
+      },
+      {
+        "name": "Well Whiskey",
+        "quantity": 3,
+        "priceCents": 2100,
+        "line": 10,
+        "confidence": "high"
+      },
+      {
+        "name": "Shots",
+        "quantity": 6,
+        "priceCents": 3600,
+        "line": 12,
+        "confidence": "high"
+      },
+      {
+        "name": "Nachos",
+        "quantity": 1,
+        "priceCents": 1300,
+        "line": 13,
+        "confidence": "high"
+      },
+      {
+        "name": "Pretzel Bites",
+        "quantity": 2,
+        "priceCents": 1800,
+        "line": 14,
+        "confidence": "high"
+      },
+      {
+        "name": "Happy Hour Discount",
+        "quantity": 1,
+        "priceCents": -800,
+        "line": 15,
+        "confidence": "high"
+      }
+    ],
+    "totals": {
+      "subtotalCents": 15800,
+      "taxCents": 1304,
+      "totalCents": 17104
+    },
+    "ignored": [
+      {
+        "line": 1,
+        "text": "THE RUSTY ANCHOR",
+        "reason": "no_price"
+      },
+      {
+        "line": 2,
+        "text": "Tab: Sam's party",
+        "reason": "no_price"
+      },
+      {
+        "line": 3,
+        "text": "Opened 9:05 PM",
+        "reason": "no_price"
+      },
+      {
+        "line": 5,
+        "text": "Round 1",
+        "reason": "no_price"
+      },
+      {
+        "line": 8,
+        "text": "Round 2",
+        "reason": "no_price"
+      },
+      {
+        "line": 11,
+        "text": "Round 3",
+        "reason": "no_price"
+      },
+      {
+        "line": 17,
+        "text": "Sub Total                158.00",
+        "reason": "total"
+      },
+      {
+        "line": 18,
+        "text": "Tax                       13.04",
+        "reason": "total"
+      },
+      {
+        "line": 19,
+        "text": "Amount Due               171.04",
+        "reason": "total"
+      },
+      {
+        "line": 20,
+        "text": "MASTERCARD XXXX0000      171.04",
+        "reason": "payment"
+      },
+      {
+        "line": 21,
+        "text": "Auth Code: 000000",
+        "reason": "payment"
+      }
+    ]
+  }
+}
