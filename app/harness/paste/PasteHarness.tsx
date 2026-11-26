@@ -5,7 +5,6 @@ import PasteReceiptSheet from "@/app/components/receipt/PasteReceiptSheet";
 import { Toaster } from "@/app/components/Toast";
 import { Money } from "@/app/components/ui";
 import { initDb, useBill } from "@/lib/hooks";
-import { createBill, addItem } from "@/lib/repo";
 import { useStripSheetParamOnLoad } from "@/lib/useSheetParam";
 
 export default function PasteHarness() {
@@ -16,6 +15,7 @@ export default function PasteHarness() {
     let cancelled = false;
     (async () => {
       await initDb();
+      const { createBill, addItem } = await import("@/lib/repo");
       // `?existing=1` starts the bill with one item, for the append/replace path.
       const bill = await createBill({ title: "Harness bill" });
       if (new URLSearchParams(window.location.search).get("existing") === "1") {
