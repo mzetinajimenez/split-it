@@ -2,7 +2,6 @@
 
 import { useParams } from "next/navigation";
 import { useSplit } from "@/lib/hooks";
-import { setPayer, setSettled } from "@/lib/repo";
 import { PayerLine } from "@/app/components/summary/PayerLine";
 import { PersonBreakdown } from "@/app/components/summary/PersonBreakdown";
 import { ReconcileBanner } from "@/app/components/summary/ReconcileBanner";
@@ -32,14 +31,14 @@ export default function SummaryPage() {
         <PayerLine
           bill={bill}
           split={split}
-          onSetPayer={(personId) => setPayer(id, personId).catch(() => toast("Couldn’t save who paid", true))}
+          onSetPayer={(personId) => import("@/lib/repo").then((r) => r.setPayer(id, personId)).catch(() => toast("Couldn’t save who paid", true))}
         />
         <PersonBreakdown
           bill={bill}
           split={split}
           partial={split.status === "unclaimed"}
           onSetSettled={(personId, settled) =>
-            setSettled(id, personId, settled).catch(() => toast("Couldn’t save that change", true))
+            import("@/lib/repo").then((r) => r.setSettled(id, personId, settled)).catch(() => toast("Couldn’t save that change", true))
           }
         />
         {/* Footer slot: #24 mounts <ShareActions/> and #30 mounts <PayLinks/> here, one line each. */}
