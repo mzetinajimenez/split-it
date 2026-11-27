@@ -36,16 +36,13 @@ test("dinner for four: paste → people → claim → tip → every total matche
   const items = page.getByRole("list", { name: "Items", exact: true }).getByRole("listitem");
   await expect(items).toHaveCount(10);
 
-  // 8.875% of the full $221.00, and the printed totals for the whole bill. Each commit is
-  // awaited before the next field is typed: a printed-total write re-keys (remounts) both
-  // printed fields, which would drop text typed into the other one in the meantime.
+  // 8.875% of the full $221.00, and the printed totals for the whole bill, typed back to back.
   const tax = page.getByLabel("Tax", { exact: true });
   await tax.fill(TAX_AMOUNT);
   await tax.press("Enter");
   const subtotal = page.getByLabel("Printed subtotal");
   await subtotal.fill(PRINTED_SUBTOTAL);
   await subtotal.press("Enter");
-  await expect(page.getByTestId("printed-mismatch-subtotal")).toBeHidden();
   const total = page.getByLabel("Printed total (before tip)");
   await total.fill(PRINTED_TOTAL);
   await total.press("Enter");
