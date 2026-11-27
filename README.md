@@ -10,6 +10,43 @@ A mobile-first web app for splitting an itemized bill at the table, quickly and 
 - Implementation plan: [`docs/superpowers/plans/2026-11-25-split-it-v1-plan.md`](docs/superpowers/plans/2026-11-25-split-it-v1-plan.md)
 - Contributor and agent rules: [`CLAUDE.md`](CLAUDE.md)
 
+## Features
+
+- Type or paste an itemized receipt, review the parsed lines, and add the people at the table.
+- Everyone taps the items they had; shared items split evenly or by weight, and nothing is
+  assigned automatically.
+- Tax, tip (pre- or post-tax) and fees are shared proportionally; totals always reconcile to
+  the cent.
+- A per-person summary, plus share as text or as a read-only link.
+- Installable to the home screen (PWA manifest and icons). There is no service worker in v1,
+  so the app itself needs a connection to load.
+- Backup export/import and "clear all data" in Settings.
+
+## Stack
+
+Next.js (App Router) + React, TypeScript, Tailwind CSS v4, Dexie (IndexedDB) for storage, zod
+for validation. No backend. Deployed on Vercel. Full rules in [`CLAUDE.md`](CLAUDE.md).
+
+## Privacy
+
+- **Your bills live only on this device.** They are stored in your browser's IndexedDB and
+  are never sent to a server. Clearing site data, or switching browsers or devices, loses
+  them, so use Settings → Backup to export a copy.
+- **Share links carry the bill in the URL fragment** (`#…`). The fragment is never sent to
+  the server, but anyone who has the link can read the bill, so share it only with the people
+  at the table.
+
+## Install as an app
+
+Open the production site on your phone, then use *Add to Home Screen* (iPhone Safari: Share →
+Add to Home Screen; Android Chrome: menu → Install app). Icons are generated with
+`node scripts/generate-icons.mjs` (Node's built-in `zlib`, no dependencies) into `public/`.
+
+## Deploy
+
+Pushes to `main` deploy to Vercel automatically; each PR gets a preview URL. The project needs
+no environment variables and `next.config.mjs` is empty.
+
 ## Develop
 
 ```bash
