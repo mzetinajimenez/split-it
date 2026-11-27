@@ -31,7 +31,11 @@ npm run test:e2e   # Playwright against the production build on :3100 (mobile + 
 - **Green before every commit.** `npm run lint && npm run typecheck && npm test && npm run
   build && npm run test:e2e` must all pass. Never skip, disable or weaken a test to get
   green. The e2e suite builds and serves a production bundle across two viewport projects,
-  so it is slower than the rest — run it before pushing, not on every save.
+  so it is slower than the rest — run it before pushing, not on every save. As of #27 it is
+  21 spec files (15 per-screen `e2e/*.spec.ts` + 6 cross-screen `e2e/journeys/*.spec.ts`),
+  67 tests × 2 projects = 134, about 1.5 minutes locally; iterate on one file with
+  `npx playwright test e2e/journeys/<name>.spec.ts`. Journeys import `test` from
+  `e2e/fixtures.ts`, which fails a test on any request outside the app origin.
   The same gate runs in CI (`.github/workflows/ci.yml`, #6) as separate required checks:
   `lint` (`--max-warnings 0`), `typecheck`, `unit`, `build`, `bundle` (first-load JS budget
   and ≤10 kB growth over `main` without `bundle-approved`), `e2e` (mobile + desktop),
@@ -204,5 +208,8 @@ lib/                            # (planned)
 e2e/
   smoke.spec.ts                 # loads / and sees the heading
   helpers/seed.ts               # seedBill(page, partial): write a Bill row straight into IndexedDB
+  fixtures.ts                   # network-guarded `test`; newBill, addItems, addPeople, claim, readTotals
+  data/dinner.ts                # the canonical dinner bill + hand-computed expected totals
+  journeys/*.spec.ts            # cross-screen journeys (#27): dinner, partial claim, share, Back, …
 scripts/generate-icons.mjs      # (planned) PWA icons
 ```
