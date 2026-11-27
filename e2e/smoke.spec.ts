@@ -5,9 +5,9 @@ import { expect, test } from "@playwright/test";
 const nav = (page: import("@playwright/test").Page) =>
   page.getByRole("navigation", { name: "Primary" }).locator("visible=true");
 
-test("home page shows the split-it heading", async ({ page }) => {
+test("home page shows the Bills heading", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1, name: "split-it" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Bills" })).toBeVisible();
 });
 
 test("tab navigation between Bills and Settings", async ({ page }) => {
