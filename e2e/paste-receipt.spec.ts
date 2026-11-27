@@ -1,9 +1,18 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { seedBill } from "./helpers/seed";
 
-// Paste-receipt import (#17), driven on the E2E-only harness route (app/harness/paste).
+// Paste-receipt import (#17), driven on the real Receipt step (#16) with a seeded bill.
 
 const RESTAURANT = readFileSync("lib/receipt/fixtures/restaurant.txt", "utf8");
+
+async function openReceipt(page: Page, withItem = false) {
+  const id = await seedBill(page, {
+    title: "Paste bill",
+    items: withItem ? [{ id: "old", name: "Old item", quantity: 1, priceCents: 500, claims: {} }] : [],
+  });
+  await page.goto(`/bills/${id}/receipt`);
+}
 
 async function pasteAndParse(page: Page, text: string) {
   await page.getByRole("button", { name: "Paste receipt" }).click();
@@ -17,7 +26,7 @@ async function pasteAndParse(page: Page, text: string) {
 }
 
 test("paste → review → uncheck one, edit one price → Add", async ({ page }) => {
-  await page.goto("/harness/paste");
+  await openReceipt(page);
   const review = await pasteAndParse(page, RESTAURANT);
 
   await expect(review.getByRole("button", { name: "Add 8 items" })).toBeVisible();
@@ -26,7 +35,7 @@ test("paste → review → uncheck one, edit one price → Add", async ({ page }
   await expect(review.getByText("16 lines ignored")).toBeVisible();
 
   // Nothing is written before Add.
-  await expect(page.getByRole("list", { name: "Items", exact: true }).getByRole("listitem")).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "Items", exact: true })).toHaveCount(0);
 
   await review.getByRole("button", { name: "Add 7 items" }).click();
   await expect(review).toBeHidden();
@@ -37,22 +46,22 @@ test("paste → review → uncheck one, edit one price → Add", async ({ page }
   await expect(items.first()).toContainText("Burrata");
   await expect(items.first()).toContainText("$15.00");
   await expect(page.getByText("Sparkling Water")).toHaveCount(0);
-  await expect(page.getByTestId("tax")).toContainText("$15.62");
+  await expect(page.getByLabel("Tax", { exact: true })).toHaveValue("15.62");
   await expect(page.getByText("Added 7 items")).toBeVisible();
 });
 
 test("Back with the sheet open just closes it and writes nothing", async ({ page }) => {
-  await page.goto("/harness/paste");
+  await openReceipt(page);
   const review = await pasteAndParse(page, RESTAURANT);
   await page.goBack();
   await expect(review).toBeHidden();
-  await expect(page.getByRole("heading", { level: 1, name: "Receipt harness" })).toBeVisible();
-  await expect(page.getByRole("list", { name: "Items", exact: true }).getByRole("listitem")).toHaveCount(0);
-  await expect(page.getByTestId("tax")).toContainText("none");
+  await expect(page.getByRole("button", { name: "Paste receipt" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Items", exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Tax", { exact: true })).toHaveValue("");
 });
 
 test("an existing bill asks append or replace; replace confirms first", async ({ page }) => {
-  await page.goto("/harness/paste?existing=1");
+  await openReceipt(page, true);
   await expect(page.getByText("Old item")).toBeVisible();
   const review = await pasteAndParse(page, "Soup 4.00\nBread 2.00\nTotal 6.00");
   await review.getByLabel("Replace them").check();
@@ -68,7 +77,7 @@ test("an existing bill asks append or replace; replace confirms first", async ({
 });
 
 test("a negative line becomes a discount, not an item", async ({ page }) => {
-  await page.goto("/harness/paste");
+  await openReceipt(page);
   const review = await pasteAndParse(page, "Burger 12.00\nHappy hour -3.00");
   await expect(review.getByText("Discount", { exact: true })).toBeVisible();
   await review.getByRole("button", { name: "Add 1 item" }).click();
