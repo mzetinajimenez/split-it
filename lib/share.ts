@@ -16,7 +16,10 @@
 //
 //   [title, date, currency, people, items, adjustments, printed, paidBy, settled, notes?]
 //
-//   people       [[name, colorIndex], …]                       in bill order
+//   people       [[name, colorIndex, handles?], …]             in bill order
+//     handles    [venmo, cashtag, paypal], each a string or null; present only when the
+//                person has handles (#30). An optional trailing element, so every link
+//                made before #30 still decodes unchanged and still says "1.".
 //   items        [[name, quantity, priceCents, claims], …]     in receipt order
 //     claims     [personIndex, shares, personIndex, shares, …] flat pairs; [] = unclaimed
 //   adjustments  [[kind, label, valueType, value, split, basis], …]
@@ -37,7 +40,7 @@
 
 import { z } from "zod";
 import { billSnapshotSchema } from "./schemas";
-import type { Adjustment, Bill, BillSnapshot, Cents } from "./types";
+import type { Adjustment, Bill, BillSnapshot, Cents, PayHandles, Person } from "./types";
 
 export const SHARE_VERSION = 1;
 
@@ -71,7 +74,7 @@ export function toSnapshot(bill: Bill): BillSnapshot {
     title: bill.title,
     date: bill.date,
     currency: bill.currency,
-    people: bill.people.map((p) => ({ ...p })),
+    people: bill.people.map((p) => ({ ...p, ...(p.handles ? { handles: { ...p.handles } } : {}) })),
     items: bill.items.map((it) => ({ ...it, claims: { ...it.claims } })),
     adjustments: bill.adjustments.map((a) => ({ ...a, value: { ...a.value } })),
     printed: { ...bill.printed },
@@ -94,7 +97,8 @@ const KINDS = ["tax", "tip", "fee", "discount"] as const;
 const SPLITS = ["proportional", "equal"] as const;
 const BASES = [undefined, "pretax", "posttax"] as const;
 
-type CompactPerson = [string, number];
+type CompactHandles = [string | null, string | null, string | null];
+type CompactPerson = [string, number, CompactHandles?];
 type CompactItem = [string, number, Cents, number[]];
 type CompactAdjustment = [number, string, number, number, number, number];
 type CompactBill = [
@@ -121,7 +125,11 @@ function toCompact(snapshot: BillSnapshot): CompactBill {
     snapshot.title,
     snapshot.date,
     snapshot.currency,
-    snapshot.people.map((p) => [p.name, p.colorIndex]),
+    snapshot.people.map((p): CompactPerson => {
+      const h = p.handles;
+      if (!h) return [p.name, p.colorIndex];
+      return [p.name, p.colorIndex, [h.venmo ?? null, h.cashtag ?? null, h.paypal ?? null]];
+    }),
     snapshot.items.map((it) => [
       it.name,
       it.quantity,
@@ -157,7 +165,12 @@ const compactSchema = z
       z.string(), // title
       z.string(), // date
       z.string(), // currency
-      z.array(z.tuple([z.string(), int])),
+      z.array(
+        z.tuple([z.string(), int], z.tuple([z.string().nullable(), z.string().nullable(), z.string().nullable()])).refine(
+          (p) => p.length <= 3,
+          "Too many person fields",
+        ),
+      ),
       z.array(z.tuple([z.string(), int, int, z.array(int)])),
       z.array(
         z.tuple([
@@ -177,6 +190,20 @@ const compactSchema = z
   )
   .refine((c) => c.length <= 10, "Too many fields");
 
+function expandPerson(i: number, name: string, colorIndex: number, compact?: CompactHandles): Person {
+  const person: Person = { id: String(i), name, colorIndex };
+  if (compact) {
+    const [venmo, cashtag, paypal] = compact;
+    const handles: PayHandles = {
+      ...(venmo !== null && { venmo }),
+      ...(cashtag !== null && { cashtag }),
+      ...(paypal !== null && { paypal }),
+    };
+    if (Object.keys(handles).length > 0) person.handles = handles;
+  }
+  return person;
+}
+
 function fromCompact(raw: unknown): BillSnapshot {
   const parsed = compactSchema.safeParse(raw);
   if (!parsed.success) throw new ShareDecodeError("invalid", { cause: parsed.error });
@@ -194,7 +221,7 @@ function fromCompact(raw: unknown): BillSnapshot {
     title,
     date,
     currency,
-    people: people.map(([name, colorIndex], i) => ({ id: String(i), name, colorIndex })),
+    people: people.map(([name, colorIndex, handles], i) => expandPerson(i, name, colorIndex, handles)),
     items: items.map(([name, quantity, priceCents, flat], i) => {
       if (flat.length % 2 !== 0) throw new ShareDecodeError("invalid", { cause: new Error("Odd claims array") });
       const claims: Record<string, number> = {};

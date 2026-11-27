@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import { MAX_CENTS } from "./money";
-import type { Adjustment, AmountSpec, Bill, BillSnapshot, Item, Meta, Person, Settings } from "./types";
+import type { Adjustment, AmountSpec, Bill, BillSnapshot, Item, Meta, PayHandles, Person, Settings } from "./types";
 
 // ---------------------------------------------------------------------------------------
 // Limits
@@ -89,11 +89,33 @@ export const adjustmentKindSchema = z.enum(["tax", "tip", "fee", "discount"]);
 // Entities
 // ---------------------------------------------------------------------------------------
 
+// Payment handles (#30), stored bare. The character sets are deliberately URL-path-safe so
+// a handle can never smuggle a "/", "?" or "#" into a pay link (lib/payLinks.ts).
+/** Venmo username: letters, digits, "-" and "_" (Venmo's own rule is 5–30 characters). */
+export const venmoHandleSchema = z.string().regex(/^[A-Za-z0-9_-]{1,30}$/, "Letters, numbers, - and _ only");
+/** Cash App $Cashtag without the "$": letters and digits, at most 20, at least one letter. */
+export const cashtagSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9]{1,20}$/, "Letters and numbers only")
+  .regex(/[A-Za-z]/, "Needs at least one letter");
+/** PayPal.me name: letters and digits, at most 20. */
+export const paypalHandleSchema = z.string().regex(/^[A-Za-z0-9]{1,20}$/, "Letters and numbers only");
+
+export const payHandlesSchema: z.ZodType<PayHandles> = z
+  .object({
+    venmo: venmoHandleSchema.optional(),
+    cashtag: cashtagSchema.optional(),
+    paypal: paypalHandleSchema.optional(),
+  })
+  .strict()
+  .refine((h) => Object.values(h).some((v) => v !== undefined), "Drop the field instead of storing no handles");
+
 export const personSchema: z.ZodType<Person> = z
   .object({
     id: idSchema,
     name: personNameSchema,
     colorIndex: z.number().int().min(0).max(7),
+    handles: payHandlesSchema.optional(),
   })
   .strict();
 

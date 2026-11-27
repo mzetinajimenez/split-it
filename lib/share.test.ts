@@ -289,6 +289,56 @@ describe("decode errors", () => {
   });
 });
 
+describe("payment handles (#30)", () => {
+  // Encoded by main's lib/share.ts before #30 (Sam + Alex, one shared $25 item, Sam paid).
+  // It must decode forever: handles are an optional trailing person element.
+  const PRE_30_LINK = "1.FYsxCoAwEAT_svUGLpHYC9Y20eq4IgTBImohgs-XY2GKGVax1nY_IJKkMcQYUgaxlRlURaknOBgVU98_MJu5Xmo7_BSZsghVGH3m1ajX2zsdRqGa_Q";
+
+  it("a link made before handles existed still decodes, with no handles", async () => {
+    const snap = await decodeShare(PRE_30_LINK);
+    expect(snap.people).toEqual([
+      { id: "0", name: "Sam", colorIndex: 3 },
+      { id: "1", name: "Alex", colorIndex: 5 },
+    ]);
+    expect(snap.items[0]).toMatchObject({ name: "Nachos", priceCents: 2500, claims: { "0": 1, "1": 1 } });
+    expect(snap.paidBy).toBe("0");
+  });
+
+  it("a bill without handles still encodes byte-for-byte as before", async () => {
+    const bill = makeBill({
+      title: "Tacos", date: "2026-11-25", currency: "USD",
+      people: [makePerson("a", { name: "Sam", colorIndex: 3 }), makePerson("b", { name: "Alex", colorIndex: 5 })],
+      items: [makeItem("x", 2500, { a: 1, b: 1 }, { name: "Nachos" })], paidBy: "a", settled: [],
+    });
+    expect(await encodeShare(bill)).toBe(PRE_30_LINK);
+  });
+
+  it("round-trips handles, partial or full, still as a v1 link", async () => {
+    const bill = sampleBill();
+    bill.people[0].handles = { venmo: "sam-lee", cashtag: "samlee", paypal: "SamLee" };
+    bill.people[1].handles = { cashtag: "alex" };
+    const payload = await encodeShare(bill);
+    expect(payload.startsWith("1.")).toBe(true);
+    const snap = await decodeShare(payload);
+    expect(snap.people[0].handles).toEqual({ venmo: "sam-lee", cashtag: "samlee", paypal: "SamLee" });
+    expect(snap.people[1].handles).toEqual({ cashtag: "alex" });
+  });
+
+  it("toSnapshot copies handles rather than sharing them", () => {
+    const bill = sampleBill();
+    bill.people[0].handles = { venmo: "sam-lee" };
+    const snap = toSnapshot(bill);
+    snap.people[0].handles!.venmo = "changed";
+    expect(bill.people[0].handles?.venmo).toBe("sam-lee");
+  });
+
+  it("an invalid handle in a link → invalid", async () => {
+    const bill = sampleBill();
+    bill.people[0].handles = { venmo: "a/b?evil" };
+    await expect(decodeShare(await encodeShare(bill))).rejects.toMatchObject({ reason: "invalid" });
+  });
+});
+
 describe("shareUrl", () => {
   it("puts the payload in the fragment of /s", () => {
     expect(shareUrl("https://split-it.app", "1.abc")).toBe("https://split-it.app/s#1.abc");

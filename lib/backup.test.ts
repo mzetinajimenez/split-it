@@ -76,6 +76,43 @@ describe("parseBackup rejects", () => {
   });
 });
 
+describe("payment handles (#30)", () => {
+  it("round-trips people's handles", async () => {
+    const bill = buildBill({ id: "h" });
+    bill.people = [{ id: "p1", name: "Sam", colorIndex: 0, handles: { venmo: "sam-lee", paypal: "SamLee" } }];
+    await db.bills.add(bill);
+    const backup = await exported();
+    expect(backup.bills[0].people[0].handles).toEqual({ venmo: "sam-lee", paypal: "SamLee" });
+  });
+
+  it("an old backup (people without handles) still imports", async () => {
+    const old = {
+      app: "split-it",
+      schemaVersion: 1,
+      exportedAt: "2026-11-26T00:00:00.000Z",
+      bills: [
+        {
+          ...buildBill({ id: "old" }),
+          people: [{ id: "p1", name: "Sam", colorIndex: 0 }],
+          paidBy: "p1",
+        },
+      ],
+      settings: await querySettings(),
+    };
+    const parsed = parseBackup(JSON.stringify(old));
+    expect(parsed.bills[0].people[0]).toEqual({ id: "p1", name: "Sam", colorIndex: 0 });
+    await importBackup(parsed);
+    expect((await queryAllBillRows())[0].people[0].name).toBe("Sam");
+  });
+
+  it("rejects a backup with a malformed handle", async () => {
+    const bill = buildBill({ id: "bad" });
+    bill.people = [{ id: "p1", name: "Sam", colorIndex: 0, handles: { cashtag: "$sam" } }];
+    const text = JSON.stringify({ app: "split-it", schemaVersion: 1, exportedAt: "2026-11-26T00:00:00.000Z", bills: [bill], settings: await querySettings() });
+    expect(() => parseBackup(text)).toThrow(BackupError);
+  });
+});
+
 describe("summarizeBackup", () => {
   it("counts live bills and names the latest date", async () => {
     await db.bills.bulkAdd([

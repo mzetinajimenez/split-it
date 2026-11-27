@@ -34,6 +34,7 @@ import {
   itemInputSchema,
   itemPatchSchema,
   MAX_ITEM_NAME,
+  payHandlesSchema,
   personNameSchema,
   settingsPatchSchema,
   settingsSchema,
@@ -47,6 +48,7 @@ import type {
   BillSnapshot,
   Item,
   ItemInput,
+  PayHandles,
   Person,
   Settings,
   SplitMode,
@@ -326,6 +328,23 @@ export async function movePerson(billId: string, personId: string, toIndex: numb
     const from = findPersonIndex(bill, personId);
     const [person] = bill.people.splice(from, 1);
     bill.people.splice(Math.max(0, Math.min(to, bill.people.length)), 0, person);
+  });
+}
+
+/**
+ * Set or clear a person's payment handles (#30). Blank fields are dropped; with none left
+ * the `handles` key is removed rather than stored empty. Values are stored bare (no "@"/"$").
+ */
+export async function setHandles(billId: string, personId: string, handles: PayHandles): Promise<void> {
+  idSchema.parse(personId);
+  const cleaned = Object.fromEntries(
+    Object.entries(handles).filter(([, v]) => typeof v === "string" && v.trim() !== "").map(([k, v]) => [k, v!.trim()]),
+  );
+  const parsed = Object.keys(cleaned).length > 0 ? payHandlesSchema.parse(cleaned) : undefined;
+  await mutateBill(billId, (bill) => {
+    const person = bill.people[findPersonIndex(bill, personId)];
+    if (parsed) person.handles = parsed;
+    else delete person.handles;
   });
 }
 
