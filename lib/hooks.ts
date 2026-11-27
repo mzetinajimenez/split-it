@@ -61,6 +61,11 @@ async function liveBills(): Promise<Bill[]> {
   return bills.sort(byRecency);
 }
 
+/** Every stored bill row, tombstones included. For backup export only. */
+export async function queryAllBillRows(): Promise<Bill[]> {
+  return db.bills.toArray();
+}
+
 /** The Bills history: live bills sorted by `date` desc, then `updatedAt` desc. */
 export async function queryBills(): Promise<BillListEntry[]> {
   return (await liveBills()).map((bill) => {
