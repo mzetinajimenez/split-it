@@ -5,7 +5,7 @@
 // parseMoney / parsePercent, results come from computeSplit via useSplit and render via <Money>.
 // The mismatch is a warning (attention), never an error. @/lib/repo is a lazy chunk.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "@/app/components/Toast";
 import { Field, Money, MoneyInput, SegmentedControl } from "@/app/components/ui";
 import { formatBps, formatMoney, parseMoney, parsePercent } from "@/lib/money";
@@ -27,7 +27,6 @@ export default function ReceiptTotals({ bill, split }: { bill: Bill; split: Spli
   const { currency } = bill;
   const taxSpec = bill.adjustments.find((a) => a.kind === "tax")?.value;
   const taxKey = taxSpec ? JSON.stringify(taxSpec) : "none";
-  const printedKey = `${bill.printed.subtotalCents ?? ""}|${bill.printed.totalCents ?? ""}`;
 
   useEffect(() => {
     void import("@/lib/repo");
@@ -42,7 +41,7 @@ export default function ReceiptTotals({ bill, split }: { bill: Bill; split: Spli
       <h2 className="font-display text-lg font-bold text-ink">Receipt totals</h2>
 
       <TaxField key={taxKey} billId={bill.id} currency={currency} spec={taxSpec} />
-      <PrintedFields key={printedKey} bill={bill} />
+      <PrintedFields bill={bill} />
 
       {subDiff !== null && subDiff !== 0 && printedSub !== undefined ? (
         <Banner testId="printed-mismatch-subtotal">
@@ -151,6 +150,18 @@ function PrintedFields({ bill }: { bill: Bill }) {
   const [sub, setSub] = useState(() => moneyText(bill.printed.subtotalCents, currency));
   const [tot, setTot] = useState(() => moneyText(bill.printed.totalCents, currency));
   const [errors, setErrors] = useState<{ sub?: string; tot?: string }>({});
+  // Never remount on a save: a write landing for one field must not drop text typed in the other.
+  // `focused` guards the prop -> draft sync; `printedRef` is the latest printed object we wrote,
+  // so two quick commits don't overwrite each other with a stale `bill.printed`.
+  const focused = useRef<{ sub: boolean; tot: boolean }>({ sub: false, tot: false });
+  const printedRef = useRef(bill.printed);
+  const pending = useRef(0);
+
+  useEffect(() => {
+    if (pending.current === 0) printedRef.current = bill.printed;
+    if (!focused.current.sub) setSub(moneyText(bill.printed.subtotalCents, currency));
+    if (!focused.current.tot) setTot(moneyText(bill.printed.totalCents, currency));
+  }, [bill.printed, currency]);
 
   async function commit(which: "sub" | "tot", value: string) {
     const trimmed = value.trim();
@@ -160,15 +171,19 @@ function PrintedFields({ bill }: { bill: Bill }) {
       return;
     }
     setErrors((e) => ({ ...e, [which]: undefined }));
-    const printed = { ...bill.printed };
+    const printed = { ...printedRef.current };
     const key = which === "sub" ? "subtotalCents" : "totalCents";
     if (cents === undefined) delete printed[key];
     else printed[key] = cents;
+    printedRef.current = printed;
+    pending.current++;
     try {
       const { updateBill } = await import("@/lib/repo");
       await updateBill(bill.id, { printed });
     } catch {
       toast("Couldn’t save the printed total", true);
+    } finally {
+      pending.current--;
     }
   }
 
@@ -187,7 +202,13 @@ function PrintedFields({ bill }: { bill: Bill }) {
           placeholder="Optional"
           value={value}
           onChange={(e) => set(e.target.value)}
-          onBlur={() => void commit(which, value)}
+          onFocus={() => {
+            focused.current[which] = true;
+          }}
+          onBlur={() => {
+            focused.current[which] = false;
+            void commit(which, value);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
