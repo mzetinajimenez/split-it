@@ -30,13 +30,14 @@ export function DefaultsPanel() {
   const settings = useSettings();
   if (!settings) return null;
   // Remount on external change so the drafts re-seed from the stored values.
-  return <DefaultsForm key={`${settings.currency}|${settings.defaultTip.bps}`} settings={settings} />;
+  return <DefaultsForm key={`${settings.currency}|${settings.defaultTip.bps}|${settings.defaultTip.basis}`} settings={settings} />;
 }
 
 function DefaultsForm({ settings }: { settings: NonNullable<ReturnType<typeof useSettings>> }) {
   const [currency, setCurrency] = useState(settings.currency);
   const [other, setOther] = useState("");
   const [tip, setTip] = useState(bpsToText(settings.defaultTip.bps));
+  const [basis, setBasis] = useState(settings.defaultTip.basis);
   const [busy, setBusy] = useState(false);
 
   const otherCode = other.trim().toUpperCase();
@@ -44,7 +45,7 @@ function DefaultsForm({ settings }: { settings: NonNullable<ReturnType<typeof us
   const bps = textToBps(tip);
   const tipError = bps === null ? "Enter a percentage from 0 to 100" : undefined;
   const effective = otherCode !== "" && !otherError ? otherCode : currency;
-  const dirty = effective !== settings.currency || (bps !== null && bps !== settings.defaultTip.bps);
+  const dirty = effective !== settings.currency || (bps !== null && bps !== settings.defaultTip.bps) || basis !== settings.defaultTip.basis;
   const options: string[] = COMMON_CURRENCIES.includes(currency as (typeof COMMON_CURRENCIES)[number])
     ? [...COMMON_CURRENCIES]
     : [currency, ...COMMON_CURRENCIES];
@@ -54,7 +55,7 @@ function DefaultsForm({ settings }: { settings: NonNullable<ReturnType<typeof us
     setBusy(true);
     try {
       const { updateSettings } = await import("@/lib/repo");
-      await updateSettings({ currency: effective, defaultTip: { bps, basis: settings.defaultTip.basis } });
+      await updateSettings({ currency: effective, defaultTip: { bps, basis } });
       setOther("");
       toast("Defaults saved");
     } catch {
@@ -106,7 +107,7 @@ function DefaultsForm({ settings }: { settings: NonNullable<ReturnType<typeof us
           />
         )}
       </Field>
-      <Field label="Default tip (%)" hint="Always on the pre-tax subtotal, split proportionally." error={tipError}>
+      <Field label="Default tip (%)" hint="Split in proportion to what each person ordered." error={tipError}>
         {({ id, describedBy, invalid }) => (
           <TextInput
             id={id}
@@ -117,6 +118,19 @@ function DefaultsForm({ settings }: { settings: NonNullable<ReturnType<typeof us
             value={tip}
             onChange={(e) => setTip(e.target.value)}
           />
+        )}
+      </Field>
+      <Field label="Default tip basis">
+        {({ id }) => (
+          <select
+            id={id}
+            value={basis}
+            onChange={(e) => setBasis(e.target.value as "pretax" | "posttax")}
+            className="min-h-11 w-full rounded-sm border border-rule-strong bg-raised px-3 text-base text-ink focus-visible:border-ink"
+          >
+            <option value="pretax">Pre-tax subtotal</option>
+            <option value="posttax">Post-tax total</option>
+          </select>
         )}
       </Field>
       <Button variant="primary" disabled={!dirty || busy || bps === null || !!otherError} onClick={() => void save()}>

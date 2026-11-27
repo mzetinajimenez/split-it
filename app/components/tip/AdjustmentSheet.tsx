@@ -1,14 +1,14 @@
 "use client";
 
 // AdjustmentSheet (`?sheet=adjustment`): add or edit a fee or discount: label (with
-// suggestions), an amount or %, and Delete when editing. The split is always proportional in
-// v1. Which adjustment is local state in the page, never the URL.
+// suggestions), an amount or %, and Delete when editing. Split proportionally or equally (#33). Which adjustment is local state in the page, never the URL.
 
 import { useState } from "react";
 import Sheet from "@/app/components/Sheet";
 import { toast } from "@/app/components/Toast";
 import { Button, Chip, Field, MoneyInput, SegmentedControl, TextInput } from "@/app/components/ui";
 import { formatBps, formatMoney, parseMoney, parsePercent } from "@/lib/money";
+import SplitMethodSelect, { type AdjustmentMethod } from "./SplitMethodSelect";
 import type { AmountSpec, Bill } from "@/lib/types";
 import type { AdjustmentTarget } from "./AdjustmentList";
 
@@ -42,6 +42,7 @@ export default function AdjustmentSheet({
   const [label, setLabel] = useState(existing?.label ?? "");
   const [mode, setMode] = useState<Mode>(existing?.value.type ?? "amount");
   const [text, setText] = useState(() => specText(existing?.value, bill.currency));
+  const [method, setMethod] = useState<AdjustmentMethod>(existing?.split ?? "proportional");
   const [errors, setErrors] = useState<{ label?: string; value?: string }>({});
   const [busy, setBusy] = useState(false);
 
@@ -69,7 +70,7 @@ export default function AdjustmentSheet({
         kind,
         label: trimmed,
         value,
-        split: "proportional",
+        split: method,
       });
       onClose();
     } catch {
@@ -151,7 +152,12 @@ export default function AdjustmentSheet({
             </div>
           )}
         </Field>
-        <p className="text-sm text-ink-muted">Split by what each person ordered</p>
+        <SplitMethodSelect
+          kind="adjustment"
+          value={method}
+          onChange={setMethod}
+          headcount={bill.people.length}
+        />
         <button type="submit" hidden />
       </form>
       {existing ? (
