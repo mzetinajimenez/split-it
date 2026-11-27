@@ -11,7 +11,6 @@ import { ConfirmBox } from "@/app/components/ConfirmBox";
 import { toast } from "@/app/components/Toast";
 import { Avatar, Button, Money, Stepper } from "@/app/components/ui";
 import { initials } from "@/lib/people";
-import { explodeItem, setClaims } from "@/lib/repo";
 import { previewItemSplit } from "@/lib/split";
 import type { Bill, Item } from "@/lib/types";
 
@@ -96,6 +95,8 @@ export default function ItemSplitSheet({
   async function done() {
     setBusy(true);
     try {
+      // Dynamic: keeps zod + the repo layer out of the route's first-load chunk (as #19 does).
+      const { setClaims } = await import("@/lib/repo");
       await setClaims(bill.id, item.id, draft);
       onClose();
     } catch {
@@ -107,6 +108,7 @@ export default function ItemSplitSheet({
   async function splitIntoUnits() {
     setBusy(true);
     try {
+      const { explodeItem } = await import("@/lib/repo");
       await explodeItem(bill.id, item.id);
       onClose();
     } catch {

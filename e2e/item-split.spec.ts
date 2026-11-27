@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { seedBill } from "./helpers/seed";
 
 // ItemSplitSheet (#20), driven on the E2E-only stand-in for the claim board
-// (app/harness/item-split/[id]). Both viewport projects: bottom sheet and centred modal.
+// the real Split page (#19), via each item's chevron. Both viewport projects: bottom sheet and centred modal.
 
 const NAMES = ["Ana", "Ben", "Cy", "Dee", "Eli"];
 
@@ -16,13 +16,13 @@ async function setup(page: Page, opts: { paidBy?: number | null } = {}) {
       { id: crypto.randomUUID(), name: "Beer", quantity: 3, priceCents: 900, claims: { [people[0].id]: 1 } },
     ],
   });
-  await page.goto(`/harness/item-split/${id}`);
-  await expect(page.getByRole("heading", { level: 1, name: "Item split harness" })).toBeVisible();
+  await page.goto(`/bills/${id}/split`);
+  await expect(page.getByRole("radiogroup", { name: "Who are you?" })).toBeVisible();
   return id;
 }
 
 async function openSheet(page: Page, item: string) {
-  await page.getByRole("button", { name: `Split ${item}` }).click();
+  await page.getByRole("button", { name: `Split ${item} between people` }).click();
   const sheet = page.getByRole("dialog", { name: item });
   await expect(sheet).toBeVisible();
   await expect(page).toHaveURL(/\?sheet=split-item$/);
@@ -41,6 +41,7 @@ async function previewCents(page: Page): Promise<number[]> {
   return texts.map((t) => Math.round(parseFloat(t.replace(/[$,]/g, "")) * 100));
 }
 
+const itemRow = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name}[,(]`) });
 const row = (page: Page, name: string) => page.getByRole("dialog").locator(`li[data-person="${name}"]`);
 
 test("2:1 weighted shares on $10.00 shows $6.67 / $3.33 and sums to the price", async ({ page }) => {
@@ -109,11 +110,11 @@ test("Done writes once and the item id never appears in the URL", async ({ page 
   expect(new URL(page.url()).search).toBe("?sheet=split-item");
   await sheet.getByRole("switch", { name: "Ben", exact: true }).click();
   await sheet.getByRole("button", { name: "Increase Ben’s shares" }).click();
-  await expect(page.getByTestId("claims-Pizza")).toHaveText("{}"); // local until Done
+  await expect(itemRow(page, "Pizza")).toContainText("Unclaimed"); // local until Done
   await sheet.getByRole("button", { name: "Done" }).click();
   await expect(sheet).toBeHidden();
   await expect(page).not.toHaveURL(/\?sheet=/);
-  await expect(page.getByTestId("claims-Pizza")).toHaveText('{"Ben":2}');
+  await expect(itemRow(page, "Pizza")).toHaveAccessibleName(/^Pizza, \$10\.00, claimed by Ben/);
 });
 
 test("Back closes without writing", async ({ page }) => {
@@ -122,7 +123,7 @@ test("Back closes without writing", async ({ page }) => {
   await sheet.getByRole("switch", { name: "Ben", exact: true }).click();
   await page.goBack();
   await expect(sheet).toBeHidden();
-  await expect(page.getByTestId("claims-Pizza")).toHaveText("{}");
+  await expect(itemRow(page, "Pizza")).toContainText("Unclaimed");
 });
 
 test("Clear then Done empties the claims", async ({ page }) => {
@@ -133,16 +134,14 @@ test("Clear then Done empties the claims", async ({ page }) => {
   await expect(sheet.getByText("It stays unclaimed")).toBeVisible();
   await sheet.getByRole("button", { name: "Done" }).click();
   await expect(sheet).toBeHidden();
-  await expect(page.getByTestId("claims-Beer")).toHaveText("{}");
+  await expect(itemRow(page, "Beer")).toContainText("Unclaimed");
 });
 
 test("Split into units confirms, explodes the item and closes", async ({ page }) => {
   await setup(page);
-  await expect(page.getByRole("button", { name: "Split Pizza" })).toBeVisible();
-  await openSheet(page, "Pizza").then(async (s) => {
-    await expect(s.getByRole("button", { name: "Split into units" })).toHaveCount(0); // qty 1
-    await s.getByRole("button", { name: "Close" }).click();
-  });
+  const pizza = await openSheet(page, "Pizza");
+  await expect(pizza.getByRole("button", { name: "Split into units" })).toHaveCount(0); // qty 1
+  await pizza.getByRole("button", { name: "Close" }).click();
   const sheet = await openSheet(page, "Beer");
   await sheet.getByRole("button", { name: "Split into units" }).click();
   const confirm = sheet.getByRole("alertdialog");
@@ -152,7 +151,7 @@ test("Split into units confirms, explodes the item and closes", async ({ page })
   await sheet.getByRole("button", { name: "Split into units" }).click();
   await sheet.getByRole("alertdialog").getByRole("button", { name: "Split into units" }).click();
   await expect(sheet).toBeHidden();
-  await expect(page.getByRole("button", { name: "Split Beer (1/3)" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Split Beer (3/3)" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Split Beer", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Split Beer (1/3) between people" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Split Beer (3/3) between people" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Split Beer between people", exact: true })).toHaveCount(0);
 });
