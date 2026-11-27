@@ -6,6 +6,7 @@
 
 import { z } from "zod";
 import { MAX_CENTS } from "./money";
+import { HANDLE_PATTERNS, HANDLE_RULES } from "./payLinks";
 import type { Adjustment, AmountSpec, Bill, BillSnapshot, Item, Meta, PayHandles, Person, Settings } from "./types";
 
 // ---------------------------------------------------------------------------------------
@@ -89,17 +90,11 @@ export const adjustmentKindSchema = z.enum(["tax", "tip", "fee", "discount"]);
 // Entities
 // ---------------------------------------------------------------------------------------
 
-// Payment handles (#30), stored bare. The character sets are deliberately URL-path-safe so
-// a handle can never smuggle a "/", "?" or "#" into a pay link (lib/payLinks.ts).
-/** Venmo username: letters, digits, "-" and "_" (Venmo's own rule is 5–30 characters). */
-export const venmoHandleSchema = z.string().regex(/^[A-Za-z0-9_-]{1,30}$/, "Letters, numbers, - and _ only");
-/** Cash App $Cashtag without the "$": letters and digits, at most 20, at least one letter. */
-export const cashtagSchema = z
-  .string()
-  .regex(/^[A-Za-z0-9]{1,20}$/, "Letters and numbers only")
-  .regex(/[A-Za-z]/, "Needs at least one letter");
-/** PayPal.me name: letters and digits, at most 20. */
-export const paypalHandleSchema = z.string().regex(/^[A-Za-z0-9]{1,20}$/, "Letters and numbers only");
+// Payment handles (#30), stored bare. The patterns live in zod-free lib/payLinks.ts so the
+// UI can check them without loading zod; see HANDLE_PATTERNS there for the rules.
+export const venmoHandleSchema = z.string().regex(HANDLE_PATTERNS.venmo, HANDLE_RULES.venmo);
+export const cashtagSchema = z.string().regex(HANDLE_PATTERNS.cashtag, HANDLE_RULES.cashtag);
+export const paypalHandleSchema = z.string().regex(HANDLE_PATTERNS.paypal, HANDLE_RULES.paypal);
 
 export const payHandlesSchema: z.ZodType<PayHandles> = z
   .object({

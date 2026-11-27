@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useSplit } from "@/lib/hooks";
 import { PayerLine } from "@/app/components/summary/PayerLine";
 import { PersonBreakdown } from "@/app/components/summary/PersonBreakdown";
+import { PayLinks } from "@/app/components/summary/PayLinks";
 import { ShareActions } from "@/app/components/summary/ShareActions";
 import { ReconcileBanner } from "@/app/components/summary/ReconcileBanner";
 import { toast } from "@/app/components/Toast";
@@ -44,6 +45,7 @@ export default function SummaryPage() {
         />
         {/* Footer slot: #24 mounts <ShareActions/> and #30 mounts <PayLinks/> here, one line each. */}
         <footer className="flex flex-col gap-3" data-slot="summary-footer">
+          <PayLinks bill={bill} split={split} />
           <ShareActions bill={bill} split={split} />
         </footer>
       </main>

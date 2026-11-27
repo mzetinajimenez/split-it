@@ -22,8 +22,31 @@
 // These formats change; re-check the pages above when touching this file.
 
 import { minorDigits, toDecimalString } from "./money";
-import { cashtagSchema, paypalHandleSchema, venmoHandleSchema } from "./schemas";
 import type { Cents, PayHandles } from "./types";
+
+// zod-free on purpose: the Summary and People routes import this module eagerly, so it must
+// not pull zod into their first load. lib/schemas.ts builds its handle schemas from these.
+
+/**
+ * Stored handle shapes. The character sets are URL-path-safe, so a handle can never smuggle
+ * a "/", "?" or "#" into a link. Venmo: letters, digits, "-" and "_", up to 30. Cashtag
+ * (without "$"): letters and digits, up to 20, at least one letter. PayPal.me: letters and
+ * digits, up to 20.
+ */
+export const HANDLE_PATTERNS = {
+  venmo: /^[A-Za-z0-9_-]{1,30}$/,
+  cashtag: /^(?=.*[A-Za-z])[A-Za-z0-9]{1,20}$/,
+  paypal: /^[A-Za-z0-9]{1,20}$/,
+} as const satisfies Record<keyof PayHandles, RegExp>;
+
+/** The user-facing rule for each field, shown when a handle doesn't match its pattern. */
+export const HANDLE_RULES: Record<keyof PayHandles, string> = {
+  venmo: "Letters, numbers, - and _ only (up to 30)",
+  cashtag: "Letters and numbers only, with at least one letter (up to 20)",
+  paypal: "Letters and numbers only (up to 20)",
+};
+
+export const isValidHandle = (key: keyof PayHandles, value: string): boolean => HANDLE_PATTERNS[key].test(value);
 
 export type PayService = "venmo" | "cashapp" | "paypal";
 
@@ -81,7 +104,7 @@ export function buildPayLinks(input: {
   if (!handles || !Number.isSafeInteger(cents) || cents <= 0) return [];
   const links: PayLink[] = [];
 
-  if (handles.venmo && venmoHandleSchema.safeParse(handles.venmo).success && supportsCurrency("venmo", currency)) {
+  if (handles.venmo && isValidHandle("venmo", handles.venmo) && supportsCurrency("venmo", currency)) {
     const q = new URLSearchParams({ txn: "pay", amount: toDecimalString(cents, currency) });
     if (note && note.trim() !== "") q.set("note", note.trim());
     // URLSearchParams form-encodes (space → "+", "&" → "%26", emoji → UTF-8 %XX), which is
@@ -89,7 +112,7 @@ export function buildPayLinks(input: {
     links.push({ service: "venmo", label: "Venmo", url: `https://venmo.com/${handles.venmo}?${q}` });
   }
 
-  if (handles.cashtag && cashtagSchema.safeParse(handles.cashtag).success && supportsCurrency("cashapp", currency)) {
+  if (handles.cashtag && isValidHandle("cashtag", handles.cashtag) && supportsCurrency("cashapp", currency)) {
     links.push({
       service: "cashapp",
       label: "Cash App",
@@ -97,7 +120,7 @@ export function buildPayLinks(input: {
     });
   }
 
-  if (handles.paypal && paypalHandleSchema.safeParse(handles.paypal).success && supportsCurrency("paypal", currency)) {
+  if (handles.paypal && isValidHandle("paypal", handles.paypal) && supportsCurrency("paypal", currency)) {
     const amount = paypalAmount(cents, currency);
     if (amount !== null) {
       links.push({ service: "paypal", label: "PayPal", url: `https://paypal.me/${handles.paypal}/${amount}${currency}` });
