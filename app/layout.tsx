@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { fontVariables } from "./fonts";
 import "./globals.css";
+import { NewBillHost } from "./components/bills/NewBillHost";
 import { AppInit } from "./components/AppInit";
 import { BottomNav } from "./components/nav/BottomNav";
 import { NavRail } from "./components/nav/NavRail";
@@ -27,6 +28,7 @@ export default function RootLayout({
     <html lang="en" className={fontVariables}>
       <body className="bg-ground font-body text-ink antialiased">
         <AppInit />
+        <NewBillHost />
         <NavRail />
         {/* Rail offset + reading column, set once here rather than per route. */}
         <div className="md:pl-60">

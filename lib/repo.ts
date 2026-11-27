@@ -16,7 +16,10 @@
 // Framework-free: no React, no DOM.
 
 import { z } from "zod";
-import { db, DEFAULT_SETTINGS } from "./db";
+import { db, DEFAULT_SETTINGS, ensureSeeded } from "./db";
+
+// Re-exported so lib/backup.ts can read it without importing the storage seam.
+export { SCHEMA_VERSION } from "./db";
 import { allocate } from "./money";
 import { nextColorIndex } from "./people";
 import {
@@ -484,4 +487,37 @@ export async function updateSettings(patch: Partial<Omit<Settings, "id" | "updat
     };
     await db.settings.put(settingsSchema.parse(next));
   });
+}
+
+// ---------------------------------------------------------------------------------------
+// Backup restore / clear all data
+// ---------------------------------------------------------------------------------------
+
+/**
+ * Backup restore: REPLACE every bill (tombstones included, ids kept) and the settings row in
+ * one transaction. `meta` is never touched. Rows are re-validated here, so a bad row rejects
+ * before anything is cleared.
+ */
+export async function replaceAllData(input: { bills: Bill[]; settings: Settings }): Promise<void> {
+  const bills = z.array(billSchema).parse(input.bills);
+  const settings = settingsSchema.parse(input.settings);
+  await db.transaction("rw", db.bills, db.settings, async () => {
+    await db.bills.clear();
+    await db.settings.clear();
+    await db.bills.bulkAdd(bills);
+    await db.settings.put(settings);
+  });
+}
+
+/**
+ * "Clear all data": bills, settings AND meta are cleared together, then re-seeded, so the app
+ * is never left un-seedable or settings-less (CLAUDE.md).
+ */
+export async function clearAllData(): Promise<void> {
+  await db.transaction("rw", db.bills, db.settings, db.meta, async () => {
+    await db.bills.clear();
+    await db.settings.clear();
+    await db.meta.clear();
+  });
+  await ensureSeeded();
 }

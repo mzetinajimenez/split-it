@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { BillRow } from "./components/bills/BillRow";
-import { NewBillHost } from "./components/bills/NewBillHost";
 import { ConfirmBox } from "./components/ConfirmBox";
 import { emitNewBill } from "./components/nav/newBill";
 import { toast } from "./components/Toast";
@@ -55,7 +54,6 @@ export default function Home() {
 
   return (
     <>
-      <NewBillHost />
       <HeaderShell title="Bills" />
       <main>
         {sorted === undefined ? null : sorted.length === 0 ? (
