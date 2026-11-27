@@ -15,6 +15,7 @@ export function PersonBreakdown({
   split,
   readOnly = false,
   partial = false,
+  highlightPersonId = null,
   onSetSettled,
 }: {
   bill: Bill;
@@ -22,6 +23,8 @@ export function PersonBreakdown({
   readOnly?: boolean;
   /** Totals are "so far" (items still unclaimed). */
   partial?: boolean;
+  /** The shared view's "Which one are you?" choice: that row is outlined in `accent`. */
+  highlightPersonId?: string | null;
   onSetSettled?: (personId: string, settled: boolean) => void;
 }) {
   return (
@@ -38,6 +41,7 @@ export function PersonBreakdown({
             colorIndex={person.colorIndex}
             readOnly={readOnly}
             partial={partial}
+            highlighted={person.id === highlightPersonId}
             onSetSettled={onSetSettled}
           />
         );
@@ -53,6 +57,7 @@ function PersonRow({
   colorIndex,
   readOnly,
   partial,
+  highlighted,
   onSetSettled,
 }: {
   bill: Bill;
@@ -61,6 +66,7 @@ function PersonRow({
   colorIndex: number;
   readOnly: boolean;
   partial: boolean;
+  highlighted: boolean;
   onSetSettled?: (personId: string, settled: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -80,7 +86,9 @@ function PersonRow({
   return (
     <li
       data-testid={`person-${name}`}
-      className={`rounded-sm border border-rule bg-raised ${result.settled ? "opacity-60" : ""}`}
+      data-person-id={result.personId}
+      data-highlighted={highlighted || undefined}
+      className={`scroll-mt-20 rounded-sm border bg-raised ${highlighted ? "border-accent ring-2 ring-accent" : "border-rule"} ${result.settled ? "opacity-60" : ""}`}
     >
       <button
         type="button"
