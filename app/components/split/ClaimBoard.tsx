@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "../Toast";
 import { Button, Chip, EmptyState, UsersGlyph } from "../ui";
 import { ActivePersonBar } from "./ActivePersonBar";
 import { ClaimableItem } from "./ClaimableItem";
 import { SplitRestSheet } from "./SplitRestSheet";
 import { useSplit } from "@/lib/hooks";
-import { toggleClaim } from "@/lib/repo";
 import { useSheetParam } from "@/lib/useSheetParam";
 
 type Filter = "all" | "unclaimed" | "mine";
@@ -64,6 +63,12 @@ export function ClaimBoard({
   const lastTap = useRef(new Map<string, number>());
   const rest = useSheetParam("split-rest");
 
+  // lib/repo pulls in zod (~37 kB gzip), which would push this route past its first-load
+  // budget. Load it as a separate chunk, started on mount so the first tap doesn't wait.
+  useEffect(() => {
+    void import("@/lib/repo");
+  }, []);
+
   if (data === undefined) return <div aria-busy className="px-4 py-6 text-sm text-ink-muted">Loading…</div>;
   if (data === null) return <EmptyState title="Bill not found" body="It may have been deleted." />;
 
@@ -103,7 +108,9 @@ export function ClaimBoard({
     const now = Date.now();
     if (now - (lastTap.current.get(key) ?? 0) < TAP_DEBOUNCE_MS) return;
     lastTap.current.set(key, now);
-    toggleClaim(billId, itemId, activeId).catch(() => toast("Couldn't save that claim. Try again.", true));
+    import("@/lib/repo")
+      .then(({ toggleClaim }) => toggleClaim(billId, itemId, activeId))
+      .catch(() => toast("Couldn't save that claim. Try again.", true));
   }
 
   const visible = items.filter((item) =>

@@ -5,7 +5,6 @@ import Sheet from "../Sheet";
 import { toast } from "../Toast";
 import { Avatar, Button } from "../ui";
 import { initials } from "@/lib/people";
-import { claimRemaining } from "@/lib/repo";
 import type { Person } from "@/lib/types";
 
 /** "Split the rest evenly": pick people (everyone by default), then `claimRemaining`. */
@@ -35,6 +34,7 @@ export function SplitRestSheet({
     if (chosen.size === 0 || busy) return;
     setBusy(true);
     try {
+      const { claimRemaining } = await import("@/lib/repo");
       await claimRemaining(billId, people.filter((p) => chosen.has(p.id)).map((p) => p.id));
       onClose();
     } catch {
