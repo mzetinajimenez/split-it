@@ -99,3 +99,18 @@ test("deleting a claimed item asks first, naming who claimed it", async ({ page 
   await expect(page.getByRole("button", { name: "Edit Pizza (1/2)" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit Pizza (2/2)" })).toBeVisible();
 });
+
+test("printed subtotal then printed total typed back to back both persist", async ({ page }) => {
+  const id = await seedBill(page, { title: "Dinner" });
+  await page.goto(`/bills/${id}/receipt`);
+  const sub = page.getByLabel("Printed subtotal");
+  const tot = page.getByLabel("Printed total (before tip)");
+  await sub.fill("35.00");
+  await tot.fill("40.00"); // blur commits the subtotal; no wait before typing the total
+  await tot.press("Enter");
+  await expect(sub).toHaveValue("35.00");
+  await expect(tot).toHaveValue("40.00");
+  await page.reload();
+  await expect(sub).toHaveValue("35.00");
+  await expect(tot).toHaveValue("40.00");
+});
