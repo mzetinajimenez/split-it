@@ -38,6 +38,16 @@ function subscribeActive(cb: () => void) {
   return () => void activeListeners.delete(cb);
 }
 
+/** The active person for a bill and a setter, shared with every other reader (e.g. TotalsTray). */
+export function useActivePerson(billId: string): [string | null, (personId: string | null) => void] {
+  const active = useSyncExternalStore(
+    subscribeActive,
+    () => readActive(billId),
+    () => null,
+  );
+  return [active, (personId) => writeActive(billId, personId)];
+}
+
 /**
  * The claim board: pick who you are, tap what you had. Claims are never mirrored locally;
  * every tap is a Dexie write and the liveQuery behind `useSplit` re-renders. Must sit inside
