@@ -6,7 +6,8 @@
 
 import { z } from "zod";
 import { MAX_CENTS } from "./money";
-import type { Adjustment, AmountSpec, Bill, BillSnapshot, Item, Meta, Person, Settings } from "./types";
+import { HANDLE_PATTERNS, HANDLE_RULES } from "./payLinks";
+import type { Adjustment, AmountSpec, Bill, BillSnapshot, Item, Meta, PayHandles, Person, Settings } from "./types";
 
 // ---------------------------------------------------------------------------------------
 // Limits
@@ -89,11 +90,27 @@ export const adjustmentKindSchema = z.enum(["tax", "tip", "fee", "discount"]);
 // Entities
 // ---------------------------------------------------------------------------------------
 
+// Payment handles (#30), stored bare. The patterns live in zod-free lib/payLinks.ts so the
+// UI can check them without loading zod; see HANDLE_PATTERNS there for the rules.
+export const venmoHandleSchema = z.string().regex(HANDLE_PATTERNS.venmo, HANDLE_RULES.venmo);
+export const cashtagSchema = z.string().regex(HANDLE_PATTERNS.cashtag, HANDLE_RULES.cashtag);
+export const paypalHandleSchema = z.string().regex(HANDLE_PATTERNS.paypal, HANDLE_RULES.paypal);
+
+export const payHandlesSchema: z.ZodType<PayHandles> = z
+  .object({
+    venmo: venmoHandleSchema.optional(),
+    cashtag: cashtagSchema.optional(),
+    paypal: paypalHandleSchema.optional(),
+  })
+  .strict()
+  .refine((h) => Object.values(h).some((v) => v !== undefined), "Drop the field instead of storing no handles");
+
 export const personSchema: z.ZodType<Person> = z
   .object({
     id: idSchema,
     name: personNameSchema,
     colorIndex: z.number().int().min(0).max(7),
+    handles: payHandlesSchema.optional(),
   })
   .strict();
 

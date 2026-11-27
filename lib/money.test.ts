@@ -8,6 +8,7 @@ import {
   parseMoney,
   parsePercent,
   percentOf,
+  toDecimalString,
 } from "./money";
 
 /** mulberry32: tiny seeded PRNG (hand-rolled so the property tests need no dependency). */
@@ -123,6 +124,19 @@ describe("parseMoney", () => {
       expect(Number.isInteger(cents)).toBe(true);
     }
   });
+});
+
+describe("toDecimalString", () => {
+  it("renders plain decimals from the digit string", () => {
+    expect(toDecimalString(5, "USD")).toBe("0.05");
+    expect(toDecimalString(123450, "USD")).toBe("1234.50");
+    expect(toDecimalString(0, "USD")).toBe("0.00");
+    expect(toDecimalString(-120, "USD")).toBe("-1.20");
+    expect(toDecimalString(1235, "JPY")).toBe("1235");
+    expect(toDecimalString(1234, "KWD")).toBe("1.234");
+    expect(toDecimalString(MAX_CENTS, "USD")).toBe("999999.99");
+  });
+  it("rejects a non-integer", () => expect(() => toDecimalString(1.5, "USD")).toThrow(RangeError));
 });
 
 describe("formatMoney", () => {

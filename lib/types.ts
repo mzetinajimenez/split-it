@@ -14,6 +14,18 @@ export interface Person {
   id: string; // crypto.randomUUID()
   name: string; // 1..40 chars, trimmed
   colorIndex: number; // 0..7 → --color-person-0..7
+  handles?: PayHandles; // payment handles (#30); embedded + optional, so no db.version bump
+}
+
+/**
+ * A person's payment handles (#30), stored bare: no "@", "$" or URL. Each key is present
+ * only when set; an empty object is never stored (the key is dropped instead). Handles live
+ * only in the bill and in share links; they are never sent anywhere else.
+ */
+export interface PayHandles {
+  venmo?: string; // Venmo username
+  cashtag?: string; // Cash App $Cashtag, without the "$"
+  paypal?: string; // PayPal.me name
 }
 
 export interface Item {

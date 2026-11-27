@@ -7,6 +7,7 @@ import { useSheetParam } from "@/lib/useSheetParam";
 import { toast } from "@/app/components/Toast";
 import { EmptyState, HeaderShell, UsersGlyph } from "@/app/components/ui";
 import AddPersonField from "@/app/components/people/AddPersonField";
+import PayerHandles from "@/app/components/people/PayerHandles";
 import PayerPicker from "@/app/components/people/PayerPicker";
 import PersonRow from "@/app/components/people/PersonRow";
 import PersonSheet from "@/app/components/people/PersonSheet";
@@ -35,6 +36,7 @@ function PeopleStep({ id }: { id: string }) {
     }
   }
 
+  const payer = bill.people.find((p) => p.id === bill.paidBy);
   const selected = open ? bill.people.find((p) => p.id === personId) : undefined;
 
   return (
@@ -76,6 +78,7 @@ function PeopleStep({ id }: { id: string }) {
               paidBy={bill.paidBy}
               onChange={(pid) => void write((r) => r.setPayer(id, pid), "Couldn’t save who paid")}
             />
+            {payer ? <PayerHandles key={payer.id} billId={id} payer={payer} /> : null}
           </>
         )}
       </main>

@@ -351,6 +351,27 @@ describe("people", () => {
     await expect(renamePerson(bill.id, "nope", "X")).rejects.toBeInstanceOf(NotFoundError);
   });
 
+  it("setHandles stores bare handles, drops blanks, and clears with none left (#30)", async () => {
+    const { bill, alex } = await fixture();
+    await repo.setHandles(bill.id, alex.id, { venmo: " sam-lee ", cashtag: "", paypal: "SamLee" });
+    expect((await get(bill.id)).people[0].handles).toEqual({ venmo: "sam-lee", paypal: "SamLee" });
+    await repo.setHandles(bill.id, alex.id, { venmo: "", cashtag: "  " });
+    expect("handles" in (await get(bill.id)).people[0]).toBe(false);
+    await expect(repo.setHandles(bill.id, alex.id, { venmo: "a/b" })).rejects.toBeInstanceOf(ZodError);
+    await expect(repo.setHandles(bill.id, alex.id, { cashtag: "1234" })).rejects.toBeInstanceOf(ZodError);
+    await expect(repo.setHandles(bill.id, "nope", { venmo: "sam" })).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("importBill keeps people's handles (#30)", async () => {
+    const snap = {
+      title: "T", date: "2026-11-25", currency: "USD",
+      people: [{ id: "0", name: "Sam", colorIndex: 0, handles: { cashtag: "sam" } }],
+      items: [], adjustments: [], printed: {}, paidBy: "0", settled: [],
+    };
+    const saved = await importBill(snap);
+    expect(saved.people[0].handles).toEqual({ cashtag: "sam" });
+  });
+
   it("removePerson strips their claims from every item, clears paidBy and settled", async () => {
     const { bill, alex, blair, tacos, beer } = await fixture();
     await setClaims(bill.id, tacos.id, { [alex.id]: 1, [blair.id]: 2 });

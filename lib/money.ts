@@ -119,12 +119,23 @@ function formatter(currency: string, signDisplay: SignDisplay): Intl.NumberForma
  */
 export function formatMoney(cents: Cents, currency: string, opts?: { signDisplay?: SignDisplay }): string {
   if (!Number.isSafeInteger(cents)) throw new RangeError(`formatMoney: not an integer amount: ${cents}`);
+  const decimal = toDecimalString(cents, currency) as Intl.StringNumericLiteral;
+  return formatter(currency, opts?.signDisplay ?? "auto").format(decimal);
+}
+
+/**
+ * Integer minor units as a plain decimal string, no symbol or grouping:
+ * toDecimalString(123450, "USD") → "1234.50", toDecimalString(5, "USD") → "0.05",
+ * toDecimalString(1235, "JPY") → "1235". Built from the digit string, never `cents / 100`.
+ * Used for machine-readable amounts (pay links, #30). Throws RangeError on a non-integer.
+ */
+export function toDecimalString(cents: Cents, currency: string): string {
+  if (!Number.isSafeInteger(cents)) throw new RangeError(`toDecimalString: not an integer amount: ${cents}`);
   const digits = minorDigits(currency);
   const abs = String(Math.abs(cents)).padStart(digits + 1, "0");
   const whole = abs.slice(0, abs.length - digits);
   const frac = abs.slice(abs.length - digits);
-  const decimal = `${cents < 0 ? "-" : ""}${whole}${digits > 0 ? `.${frac}` : ""}` as Intl.StringNumericLiteral;
-  return formatter(currency, opts?.signDisplay ?? "auto").format(decimal);
+  return `${cents < 0 ? "-" : ""}${whole}${digits > 0 ? `.${frac}` : ""}`;
 }
 
 function assertSafeInteger(name: string, value: number): void {
