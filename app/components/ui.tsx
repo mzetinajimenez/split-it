@@ -395,7 +395,7 @@ export function SegmentedControl<T extends string>({
             tabIndex={checked ? 0 : -1}
             onClick={() => onChange(o.value)}
             className={cx(
-              "min-h-10 flex-1 rounded-sm px-3 text-sm font-medium whitespace-nowrap transition-colors select-none",
+              "min-h-11 min-w-11 flex-1 rounded-sm px-3 text-sm font-medium whitespace-nowrap transition-colors select-none",
               checked
                 ? "bg-accent text-on-accent"
                 : "text-ink active:bg-ground-deep md:hover:bg-ground-deep",
